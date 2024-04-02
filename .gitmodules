@@ -1,0 +1,9 @@
+[submodule "external_libs/yaml-cpp"]
+	path = external_libs/yaml-cpp
+	url = https://github.com/jbeder/yaml-cpp
+[submodule "external_libs/stdlib"]
+	path = external_libs/stdlib
+	url = https://github.com/fortran-lang/stdlib.git
+[submodule "external_libs/h5fortran"]
+	path = external_libs/h5fortran
+	url = https://github.com/geospace-code/h5fortran.git
