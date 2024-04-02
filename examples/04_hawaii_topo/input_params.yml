@@ -29,7 +29,7 @@ inversion:
   # ------- Regularization --------
   kdensity_coe: 1 # Kdensity_coe is used to rescale the final kernel:  kernel -> kernel / pow(density of kernel, Kdensity_coe).
   ncomponents: 5 # number of multiple grid
-  n_inv_grid: [8,9,8]
+  n_inv_grid: [8, 9, 8]
   # ------- Inversion parameters --------
   niter: 40 # max iterations
   min_derr: 0.0015 # minimum error change
