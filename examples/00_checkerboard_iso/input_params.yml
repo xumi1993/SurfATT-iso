@@ -3,7 +3,6 @@
 # data parameters
 #######################################
 data:
-  file_type: geo # geo or xy
   # src_rec_file_ph: src_rec_file_ph.csv
   # src_rec_file_gr: src_rec_file_gr.csv
   src_rec_file_ph: OUTPUT_FILES/src_rec_file_forward_ph.csv
@@ -15,14 +14,12 @@ data:
 
 output:
   output_path: OUTPUT_FILES/ # path to save output files
-  format: h5 # h5 or csv
-  is_rotate: True # whether rotate to utm coordinates
   is_save_initial_model: True # whether save initial model
   log_level: 1 # 0 debug mode, 1 verbose mode
 
 domain:
   depth: [0, 10] # depth range in km
-  interval: [0.2, 0.2, 0.5] # interval of lon, lat, z
+  interval: [0.02, 0.02, 0.5] # interval of lon, lat, z
   num_grid_margin: 5 # number of grid margin
 
 topo:
@@ -36,12 +33,13 @@ inversion:
   vel_range: [1.8, 4.2]
   init_model_path: /path/to/init_mod.h5 # Path to initial model. Only valid in init_model_type: 2
   # ------- Regularization --------
+  kdensity_coe: 1
   ncomponents: 5 # number of multiple grid
   n_inv_grid: [8,9,8]
   # ------- Inversion parameters --------
-  niter: 15 # max iterations
-  min_derr: 0.001 # minimum error change
+  niter: 40 # max iterations
+  min_derr: 0.0015 # minimum error change
   # ------- optimization parameters -------
-  opti_method: 1 # 0: SD; 1: Halving step
+  optim_method: 0 # 0: SD; 1: Halving step
   step_length: 0.02 # starting step length
   maxshrink: 0.8 # max step length decent

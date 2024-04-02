@@ -49,8 +49,8 @@ module src_rec
 
   type(srcrec), target, public                             :: src_rec_global_ph,src_rec_global_gr
   type(stations), target, public                           :: stations_global
-  integer :: win_tt_fwd, win_vel, win_dist, win_weight, win_stla, win_stlo, win_stel,&
-             win_evla, win_evlo, win_evel, win_periods_all, win_tt, &
+  integer :: win_tt_fwd, win_vel, win_dist, win_weight, win_stla, win_stlo,&
+             win_evla, win_evlo, win_periods_all, win_tt, &
              win_staname, win_evtname, win_periods_sr, win_meanvel, win_stx, win_sty
 
 contains
@@ -285,16 +285,16 @@ contains
     character(len=*), intent(in) :: fname
     type(csv_file) :: fp
     logical :: status_ok
-    integer :: i, nfield=13,n
+    integer :: i, nfield=11,n
 
     if (myrank == 0) then
       call write_log('Writing data to: '//trim(fname),1,this%module)
       n = size(this%header)
-      ! if (n==10) then
-        ! nfield = n + 3
-      ! else
-        ! nfield = 13
-      ! endif
+      if (n==10) then
+        nfield = n + 3
+      else
+        nfield = 11
+      endif
       call fp%initialize(enclose_strings_in_quotes=.false.)
       call fp%open(fname,n_cols=nfield,status_ok=status_ok)
       if ( .not. status_ok) call exit_MPI(myrank, 'Cannot open '//trim(fname))
@@ -339,7 +339,6 @@ contains
   subroutine merge_sta()
     integer :: i, j, n, nph, ngr
     ! character(len=MAX_NAME_LEN), dimension(:), allocatable :: compsta
-    ! real(kind=dp), dimension(:), allocatable :: stax, stay, stla, stlo, stel
     integer,dimension(:), allocatable :: idx
 
     if (myrank == 0) then
@@ -365,14 +364,12 @@ contains
           stations_global%sty(1:ngr) = src_rec_global_gr%stations%sty(1:ngr)
           stations_global%stla(1:ngr) = src_rec_global_gr%stations%stla(1:ngr)
           stations_global%stlo(1:ngr) = src_rec_global_gr%stations%stlo(1:ngr)
-          ! stations_global%stel(1:ngr) = src_rec_global_gr%stations%stel(1:ngr)
           do i = 1, n
             stations_global%staname(ngr+i) = src_rec_global_ph%stations%staname(idx(i))
             stations_global%stx(ngr+i) = src_rec_global_ph%stations%stx(idx(i))
             stations_global%sty(ngr+i) = src_rec_global_ph%stations%sty(idx(i))
             stations_global%stla(ngr+i) = src_rec_global_ph%stations%stla(idx(i))
             stations_global%stlo(ngr+i) = src_rec_global_ph%stations%stlo(idx(i))
-            ! stations_global%stel(ngr+i) = src_rec_global_ph%stations%stel(idx(i))
           enddo
         else
           stations_global%nsta = ngr
@@ -384,7 +381,6 @@ contains
           stations_global%sty(1:ngr) = src_rec_global_gr%stations%sty(1:ngr)
           stations_global%stla(1:ngr) = src_rec_global_gr%stations%stla(1:ngr)
           stations_global%stlo(1:ngr) = src_rec_global_gr%stations%stlo(1:ngr)
-          ! stations_global%stel(1:ngr) = src_rec_global_gr%stations%stel(1:ngr)
         endif
       endif ! (all(ap%data%vel_type)) 
     endif ! myrank==0

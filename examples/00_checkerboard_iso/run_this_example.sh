@@ -7,7 +7,7 @@ cp src_rec_file_ph.csv OUTPUT_FILES/src_rec_file_forward_ph.csv
 cp src_rec_file_gr.csv OUTPUT_FILES/src_rec_file_forward_gr.csv
 
 # create 2x3x2 checkers and forward simulate surface traveltimes
-mpirun --oversubscribe -np $NPROC ../../bin/surfatt_cb_fwd -i input_params.yml -n 2/3/2 -m 20 -p 0.08
+mpirun --oversubscribe -np $NPROC ../../bin/surfatt_cb_fwd -i input_params.yml -n 2/3/2 -m 0.2 -p 0.08
 
 # inversion 
 mpirun --oversubscribe -np $NPROC ../../bin/surfatt_tomo -i input_params.yml

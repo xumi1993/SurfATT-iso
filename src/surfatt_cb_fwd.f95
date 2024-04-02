@@ -58,6 +58,7 @@ program surfatt_cb_fwd
   ! add perturbations
   call am%add_pert(ncb(1),ncb(2),ncb(3), pert_vel=pert,&
                    hmarg=hmarg, anom_size=anom_size)
+
   ! initialize grid
   if (ap%data%vel_type(1)) then
     call ag_ph%init(1)

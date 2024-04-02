@@ -256,6 +256,13 @@ module model
     else
       ashmarg = 0.
     endif
+
+    if (present(anom_size)) then
+      asanom_size = anom_size
+    else
+      asanom_size = 0.
+    endif
+
     if (myrank == 0) then
       ntaperx = ashmarg/this%d_xyz(1)
       ntapery = ashmarg/this%d_xyz(2)
@@ -266,8 +273,7 @@ module model
       y_pert(ntapery+1:this%n_xyz(2)-ntapery) = &
         sin(ny*pi*arange(this%n_xyz(2)-2*ntapery)/(this%n_xyz(2)-2*ntapery))
       z_pert = zeros(this%n_xyz(3))
-      if (anom_size /= 0) then
-        asanom_size = anom_size ! anom_size <= (ap%domain%depth(2)-ap%domain%depth(1))/nz
+      if (asanom_size /= 0) then
         para = dep_anom(this,nz,asanom_size)
         z_pert = sin(2*pi*((sqrt(para(1)**2+para(2)*arange(0,this%n_xyz(3)-1))-para(1))/para(3)))
       else
