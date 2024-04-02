@@ -290,7 +290,7 @@ contains
     if (myrank == 0) then
       call write_log('Writing data to: '//trim(fname),1,this%module)
       n = size(this%header)
-      if (n==10) then
+      if (n==8) then
         nfield = n + 3
       else
         nfield = 11

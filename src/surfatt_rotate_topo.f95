@@ -30,6 +30,8 @@ program rotate_topo
   ! Read in the topography file
   call at%read(fname)
 
+  at%z = at%z * 1000.0_dp
+
   ! Rotate the topography
   call at%rotate(xrange(1), xrange(2), yrange(1), yrange(2), center(1), center(2), angle)
 

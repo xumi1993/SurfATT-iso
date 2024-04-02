@@ -18,3 +18,12 @@ external_libs/hdf5*
 external_libs/local_hdf5
 test/02_*/construct_data.ipynb
 test/02_*/raw_data
+test_out.h5
+test/01_checkerboard_ani/adj_xi
+
+tmp.*
+tmp*/
+src_rec_file_rotated.csv
+hawaii*.nc
+gmt.*
+test.ipynb

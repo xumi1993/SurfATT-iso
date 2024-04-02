@@ -108,7 +108,7 @@ module grid
       call at%read(ap%topo%topo_file)
       call at%grid_topo(am%xgrids, am%ygrids)
       do ip = istart, iend
-        if (iend - istart > 0) then
+        if (iend - istart >= 0) then
           sigma = tmp(ip) * this%periods(ip) * ap%topo%wavelen_factor*km2deg
           tmpto = at%smooth(sigma)
           this%topo_angle(ip,:,:) = at%calc_dip_angle(tmpto)
