@@ -15,7 +15,6 @@ endif()
 set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} ${MPI_Fortran_COMPILE_FLAGS}")
 
 set(CMAKE_CXX_STANDARD 17)
-set(BUILD_SURFATT_EXAMPLES ON)
 set(BUILD_TESTING OFF)
 set(SOURCE_DIR "${PROJECT_SOURCE_DIR}/src")
 
@@ -68,7 +67,3 @@ foreach(execsourcefile ${APP_SOURCES})
   target_link_libraries(${EXEC_NAME} PUBLIC shared_obj surfker_obj surfatt_modules)
 
 endforeach()
-
-# if(BUILD_SURFATT_EXAMPLES)
-#   add_subdirectory(${PROJECT_SOURCE_DIR}/examples)
-# endif()
