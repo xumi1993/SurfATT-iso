@@ -52,6 +52,8 @@ program surfatt_cb_fwd
   ! initialize model type
   call am%init()
 
+  call ad%init()
+
   ! construct initial model
   call am%get_init_model()
 

@@ -902,6 +902,19 @@ module my_mpi
 !-------------------------------------------------------------------------------------------------
 !
 
+ subroutine sum_all_1Darray_i(sendbuf, recvbuf, nx)
+
+  ! use my_mpi
+
+  implicit none
+
+  integer :: nx
+  integer, dimension(nx) :: sendbuf, recvbuf
+  integer :: ier
+
+  call MPI_REDUCE(sendbuf,recvbuf,nx,MPI_INTEGER,MPI_SUM,0,my_local_mpi_comm_world,ier)
+
+  end subroutine sum_all_1Darray_i
 
   subroutine sum_all_1Darray_dp(sendbuf, recvbuf, nx)
 
