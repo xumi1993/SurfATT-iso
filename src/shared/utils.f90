@@ -33,6 +33,15 @@ module utils
   end interface diff
   public :: diff
   private :: diff1, diff2
+  
+  interface linspace
+    module procedure linspace_r8r8, linspace_i4i4, &
+                     linspace_r8i4,  linspace_i4r8
+  end interface linspace
+
+  interface arange
+    module procedure arange0, arange1_i4, arange1_r8, arange_i4, arange_r8
+  end interface arange
 
   interface interp1
     module procedure interp1_0, interp1_1
@@ -196,63 +205,62 @@ end function
 !     0.  0.  0.
 !=======================================================================
 
-  function zeros1(dim1)
+  pure function zeros1(dim1)
     real(kind = RPRE), dimension(:), allocatable :: zeros1
     integer(kind = IPRE), intent(in) :: dim1
     integer(kind = IPRE) :: ierr
 
     allocate(zeros1(dim1), stat = ierr)
-    if ( ierr .ne. 0 ) then
-      print *, "Error: in zeros, could not allocate array."
-      stop
-    else
-      zeros1 = 0.0d0
-    end if
+    ! if ( ierr .ne. 0 ) then
+    !   stop "Error: in zeros, could not allocate array."
+    ! else
+    zeros1 = 0.0d0
+    ! end if
     return
   end function zeros1
 
-  function zeros2(dim1, dim2)
+  pure function zeros2(dim1, dim2)
     real(kind = RPRE), dimension(:,:), allocatable :: zeros2
     integer(kind = IPRE), intent(in) :: dim1, dim2
     integer(kind = IPRE) :: ierr
 
     allocate(zeros2(dim1, dim2), stat = ierr)
-    if ( ierr .ne. 0 ) then
-      print *, "Error: in zeros, could not allocate array."
-      stop
-    else
-      zeros2 = 0.0d0
-    end if
+    ! if ( ierr .ne. 0 ) then
+    !   print *, "Error: in zeros, could not allocate array."
+    !   stop
+    ! else
+    zeros2 = 0.0d0
+    ! end if
     return
   end function zeros2
 
-  function zeros3(dim1, dim2, dim3)
+  pure function zeros3(dim1, dim2, dim3)
     real(kind = RPRE), dimension(:,:,:), allocatable :: zeros3
     integer(kind = IPRE), intent(in) :: dim1, dim2, dim3
     integer(kind = IPRE) :: ierr
 
     allocate(zeros3(dim1, dim2, dim3), stat = ierr)
-    if ( ierr .ne. 0 ) then
-      print *, "Error: in zeros, could not allocate array."
-      stop
-    else
-      zeros3 = 0.0d0
-    end if
+    ! if ( ierr .ne. 0 ) then
+    !   print *, "Error: in zeros, could not allocate array."
+    !   stop
+    ! else
+    zeros3 = 0.0d0
+    ! end if
     return
   end function zeros3
 
-  function zeros4(dim1, dim2, dim3, dim4)
+  pure function zeros4(dim1, dim2, dim3, dim4)
     real(kind = RPRE), dimension(:,:,:,:), allocatable :: zeros4
     integer(kind = IPRE), intent(in) :: dim1, dim2, dim3, dim4
     integer(kind = IPRE) :: ierr
 
     allocate(zeros4(dim1, dim2, dim3, dim4), stat = ierr)
-    if ( ierr .ne. 0 ) then
-      print *, "Error: in zeros, could not allocate array."
-      stop
-    else
-      zeros4 = 0.0d0
-    end if
+    ! if ( ierr .ne. 0 ) then
+    !   print *, "Error: in zeros, could not allocate array."
+    !   stop
+    ! else
+    zeros4 = 0.0d0
+    ! end if
     return
   end function zeros4
 
@@ -389,7 +397,208 @@ end function
     end if
     return
   end function diff2
+!=======================================================================
+! linspace
+!-----------------------------------------------------------------------
+! linspace creates a linearly spaced vector.
+!
+! Syntax
+!-----------------------------------------------------------------------
+! x = linspace(x1, x2, n)
+!
+! Description
+!-----------------------------------------------------------------------
+! x = linspace(x1, x2, n) returns a vector of n evenly spaced points
+! between x1 and x2.
+!
+! Examples
+!-----------------------------------------------------------------------
+! x = linspace(0, 10, 11)
+!     0.  1.  2.  3.  4.  5.  6.  7.  8.  9.  10.
+!=======================================================================
 
+  pure function linspace_r8r8(first, last, n)
+    real(kind = DPRE), dimension(:), allocatable :: linspace_r8r8
+    real(kind = 8), intent(in) :: first, last
+    integer(kind = IPRE), intent(in) :: n
+    integer(kind = IPRE) :: i
+    real(kind = DPRE) :: step
+
+    allocate(linspace_r8r8(n))
+    step = ( last - first ) / ( n-1 )
+    linspace_r8r8 = first + step * real([ ( i-1, i = 1, n ) ], RPRE)
+    return
+  end function linspace_r8r8
+
+  pure function linspace_i4i4(first, last, n)
+    real(kind = DPRE), dimension(:), allocatable :: linspace_i4i4
+    integer(kind = 4), intent(in) :: first, last
+    integer(kind = IPRE), intent(in) :: n
+
+    linspace_i4i4 = linspace(real(first, kind = 8), real(last, kind = 8), n)
+    return
+  end function linspace_i4i4
+
+  pure function linspace_r8i4(first, last, n)
+    real(kind = DPRE), dimension(:), allocatable :: linspace_r8i4
+    real(kind = 8), intent(in) :: first
+    integer(kind = 4), intent(in) :: last
+    integer(kind = IPRE), intent(in) :: n
+
+    linspace_r8i4 = linspace(first, real(last, kind = 8), n)
+    return
+  end function linspace_r8i4
+
+  pure function linspace_i4r8(first, last, n)
+    real(kind = DPRE), dimension(:), allocatable :: linspace_i4r8
+    integer(kind = 4), intent(in) :: first
+    real(kind = 8), intent(in) :: last
+    integer(kind = IPRE), intent(in) :: n
+
+    linspace_i4r8 = linspace(real(first, kind = 8), last, n)
+    return
+  end function linspace_i4r8
+
+  pure function arange_i4(first, last, step) result(x)
+    real(kind = DPRE), dimension(:), allocatable :: x
+    integer(kind = IPRE), intent(in) :: first, last, step
+    integer(kind = IPRE) :: size, i
+
+    size = int((last - first) / step) + 1
+    x = [ ( first + i * step, i = 0, size - 1 ) ]
+    return
+  end function arange_i4
+
+  pure function arange_r8(first, last, step) result(x)
+    real(kind = DPRE), dimension(:), allocatable :: x
+    real(kind = DPRE), intent(in) :: first, last, step
+    integer(kind = IPRE) :: i, size
+    
+    size = int((last - first) / step) + 1
+    x = [ ( first + i * step, i = 0, size - 1 ) ]
+    return
+  end function arange_r8
+
+  pure function arange0(num) result(x)
+    real(kind = DPRE), dimension(:), allocatable :: x
+    integer(kind = IPRE), intent(in) :: num
+    integer(kind = IPRE) :: i
+
+    x = [ ( i, i = 1, num) ]
+    return
+  end function
+
+  pure function arange1_i4(first, last) result(x)
+    real(kind = DPRE), dimension(:), allocatable :: x
+    integer(kind = IPRE), intent(in) :: first, last
+    integer(kind = IPRE) :: size, i
+
+    size = int((last - first)) + 1
+    x = [ ( first + i, i = 0, size - 1 ) ]
+    return
+  end function
+
+  pure function arange1_r8(first, last) result(x)
+    real(kind = DPRE), dimension(:), allocatable :: x
+    real(kind = DPRE), intent(in) :: first, last
+    integer(kind = IPRE) :: size, i
+
+    size = int((last - first)) + 1
+    x = [ ( first + i, i = 0, size - 1 ) ]
+    return
+  end function
+
+  function sort(x, order)
+    real(kind = DPRE), dimension(:), allocatable :: sort
+    real(kind = DPRE), dimension(:), intent(in) :: x
+    integer(kind = IPRE), intent(in), optional :: order
+    integer(kind = IPRE) :: n
+
+    n = size(x)
+    sort = x
+    if ((.not. present(order)) .or. (order .eq. 1)) then
+      call quicksort(sort, n, 1)
+    elseif (order .eq. 2) then
+      call quicksort(sort, n, 2)
+    end if
+    return
+
+  contains
+
+    !-------------------------------------------------------------------
+    ! quicksort
+    !-------------------------------------------------------------------
+    recursive subroutine quicksort(x, n, order)
+      real(kind = DPRE), dimension(n), intent(inout) :: x
+      integer(kind = IPRE), intent(in) :: n, order
+      integer(kind = IPRE) :: left, right, marker
+      real(kind = DPRE) :: pivot, tmp
+
+      if (n .gt. 1) then
+        left = 0
+        right = n + 1
+        pivot = x(randi0_0(n))
+
+        select case(order)
+          case(1)
+            do while ( left .lt. right )
+              left = left + 1
+              right = right - 1
+              do while ( x(left) .lt. pivot )
+                left = left + 1
+              end do
+              do while ( x(right) .gt. pivot )
+                right = right - 1
+              end do
+              if ( left .lt. right ) then
+                tmp = x(left)
+                x(left) = x(right)
+                x(right) = tmp
+              end if
+            end do
+          case(2)
+            do while ( left .lt. right )
+              left = left + 1
+              right = right - 1
+              do while ( x(left) .gt. pivot )
+                left = left + 1
+              end do
+              do while ( x(right) .lt. pivot )
+                right = right - 1
+              end do
+              if ( left .lt. right ) then
+                tmp = x(left)
+                x(left) = x(right)
+                x(right) = tmp
+              end if
+            end do
+        end select
+
+        if ( left .eq. right ) then
+          marker = left + 1
+        else
+          marker = left
+        end if
+
+        call quicksort(x(:marker-1), marker-1, order)
+        call quicksort(x(marker:), n-marker+1, order)
+      end if
+      return
+    end subroutine quicksort
+
+  end function sort
+
+  integer(kind = IPRE) function randi0_0(imax)
+    integer(kind = IPRE), intent(in) :: imax
+
+    randi0_0 = floor( randu0() * real(imax) ) + 1
+    return
+  end function randi0_0
+
+  real(kind = DPRE) function randu0()
+    call random_number(randu0)
+    return
+  end function randu0
 !=======================================================================
 ! interp1
 !-----------------------------------------------------------------------
@@ -439,7 +648,7 @@ end function
     return
   end function interp1_1
 
-  subroutine meshgrid2_ij(ax, ay, x, y)
+  pure subroutine meshgrid2_ij(ax, ay, x, y)
     real(kind = DPRE), dimension(:), intent(in) :: ax, ay
     real(kind = DPRE), dimension(:,:), allocatable, intent(out) :: x, y
     integer(kind = IPRE) :: i, m, n
@@ -457,7 +666,7 @@ end function
     return
   end subroutine meshgrid2_ij
 
-  subroutine meshgrid3_ij(ax, ay, az, x, y, z)
+  pure subroutine meshgrid3_ij(ax, ay, az, x, y, z)
     real(kind = DPRE), dimension(:), intent(in) :: ax, ay, az
     real(kind = DPRE), dimension(:,:,:), allocatable, intent(out) :: x, y, z
     integer(kind = IPRE) :: i, m, n, j, k
@@ -486,7 +695,7 @@ end function
     return
   end subroutine meshgrid3_ij
 
-  subroutine meshgrid2(ax, ay, x, y)
+  pure subroutine meshgrid2(ax, ay, x, y)
     real(kind = DPRE), dimension(:), intent(in) :: ax, ay
     real(kind = DPRE), dimension(:,:), allocatable, intent(out) :: x, y
     integer(kind = IPRE) :: i, m, n
@@ -504,7 +713,7 @@ end function
     return
   end subroutine meshgrid2
 
-  function interp2_0_dp(x, y, v, xq, yq) result(vq)
+  pure function interp2_0_dp(x, y, v, xq, yq) result(vq)
     real(kind = DPRE) :: vq
     real(kind = DPRE), intent(in) :: xq, yq
     real(kind = DPRE), dimension(:), intent(in) :: x, y
@@ -531,7 +740,7 @@ end function
     return
   end function interp2_0_dp
 
-  function interp2_1_dp(x, y, v, xq, yq) result(vq)
+  pure function interp2_1_dp(x, y, v, xq, yq) result(vq)
     real(kind = DPRE), dimension(:), allocatable :: vq
     real(kind = DPRE), dimension(:), intent(in) :: xq, yq, x, y
     real(kind = DPRE), dimension(:,:), intent(in) :: v
@@ -545,7 +754,7 @@ end function
     return
   end function interp2_1_dp
 
-  function interp2_2_dp(x, y, v, xq, yq) result(vq)
+  pure function interp2_2_dp(x, y, v, xq, yq) result(vq)
     real(kind = DPRE), dimension(:,:), allocatable :: vq
     real(kind = DPRE), dimension(:), intent(in) :: x, y
     real(kind = DPRE), dimension(:,:), intent(in) :: v, xq, yq
@@ -634,7 +843,7 @@ end function
     
   end subroutine gradient_2
 
-  function gaussian_smooth_geo_2(data, lons, lats, sigma) result(smdata)
+  pure function gaussian_smooth_geo_2(data, lons, lats, sigma) result(smdata)
     real(kind=dp), intent(in) :: sigma ! in deg
     real(kind=dp), dimension(:), intent(in) :: lons, lats
     real(kind=dp), dimension(:,:), intent(in) :: data
@@ -667,7 +876,7 @@ end function
     
   end function
 
-  function gps2dist_scalar(lat0, lon0, lat1, lon1) result(dist)
+  pure function gps2dist_scalar(lat0, lon0, lat1, lon1) result(dist)
     ! Input parameters
     real(kind=dp), intent(in) :: lon0, lon1, lat0, lat1
     ! Local variables
@@ -681,7 +890,7 @@ end function
     dist = radius * deg
   end function gps2dist_scalar
 
-  function gps2dist_1(lat0, lon0, lat1, lon1) result(dist)
+  pure function gps2dist_1(lat0, lon0, lat1, lon1) result(dist)
     ! Input parameters
     real(kind=dp), intent(in) :: lon0, lat0
     real(kind=dp), dimension(:), intent(in) :: lon1, lat1
@@ -697,7 +906,7 @@ end function
     dist = radius * deg
   end function gps2dist_1
 
-  function gps2dist_2(lat0, lon0, lat1, lon1) result(dist)
+  pure function gps2dist_2(lat0, lon0, lat1, lon1) result(dist)
     ! Input parameters
     real(kind=dp), intent(in) :: lon0, lat0
     real(kind=dp), dimension(:,:), intent(in) :: lon1, lat1

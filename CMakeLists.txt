@@ -8,7 +8,7 @@ set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 set(CMAKE_Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/modules)
 
 if ("${CMAKE_Fortran_COMPILER_ID}" MATCHES "GNU")
-  set(MPI_Fortran_COMPILE_FLAGS "-ffixed-line-length-none -fmax-errors=10 -ftree-vectorize -O3")
+  set(MPI_Fortran_COMPILE_FLAGS "-ffixed-line-length-none -fmax-errors=10 -ftree-vectorize -march=native -O3 -ffast-math")
 elseif ("${CMAKE_Fortran_COMPILER_ID}" MATCHES "Intel")
   set(MPI_Fortran_COMPILE_FLAGS "-ffixed-line-length-none -xHost -O3")
 endif()
@@ -52,7 +52,7 @@ foreach(execsourcefile ${APP_SOURCES})
   target_link_libraries(${EXEC_NAME} PUBLIC MPI::MPI_Fortran)
   
   # link fortran stdlib
-  target_link_libraries(${EXEC_NAME} PUBLIC fortran_stdlib)
+  # target_link_libraries(${EXEC_NAME} PUBLIC fortran_stdlib)
 
   # link yaml-app:
   target_link_libraries(${EXEC_NAME} PUBLIC fortran-yaml)

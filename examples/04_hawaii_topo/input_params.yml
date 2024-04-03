@@ -17,7 +17,7 @@ domain:
   num_grid_margin: 5 # number of grid margin
 
 topo:
-  is_consider_topo: False # whether consider topography
+  is_consider_topo: True # whether consider topography
   topo_file: hawaii_rotated.nc # Path to local elevation file. Only valid in topo_type: 1 and 2
   wavelen_factor: 2.5
 

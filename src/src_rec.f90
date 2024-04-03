@@ -123,7 +123,7 @@ contains
   end subroutine
 
   subroutine get_periods(this)
-    use stdlib_sorting, only: sort
+    ! use stdlib_sorting, only: sort
   
     class(SrcRec), intent(inout) :: this
     real(kind=dp), dimension(this%npath) :: temp
@@ -139,7 +139,7 @@ contains
         endif
       enddo
       this%nperiod = count
-      call sort(temp(1:count))
+      temp(1:count) = sort(temp(1:count))
     endif
     call synchronize_all()
     call bcast_all_singlei(this%nperiod)

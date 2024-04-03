@@ -14,7 +14,6 @@ module topo
   use constants
   use h5fortran
   use utils
-  use stdlib_math, only: arange
   use sph2loc
 
   implicit none

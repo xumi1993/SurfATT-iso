@@ -21,7 +21,6 @@ program surfatt_tomo
   use tomo
   use setup_att_log, only: setuplog
   use argparse, only: argparse_tomo
-  use stdlib_io_npy, only: save_npy
 
   implicit none
   

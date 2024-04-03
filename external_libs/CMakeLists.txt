@@ -14,9 +14,7 @@ endfunction(initialize_submodule)
 
 
 initialize_submodule(yaml-cpp)
-initialize_submodule(stdlib)
 initialize_submodule(h5fortran)
 
 add_subdirectory(yaml-cpp EXCLUDE_FROM_ALL)
 add_subdirectory(h5fortran EXCLUDE_FROM_ALL)
-add_subdirectory(stdlib)

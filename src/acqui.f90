@@ -19,10 +19,8 @@ module acqui
   use setup_att_log
   use measadj
   use surfker
-  use stdlib_io_npy, only: save_npy
 
-
-  ! use stdlib_math, only: linspace
+  implicit none
 
   type, public :: att_acqui
     integer                                                :: itype,nsrc,istart,iend,iter

@@ -19,9 +19,9 @@ module model
   use decomposer, amd => att_mesh_decomposer_global
   use utils
   use h5fortran
-  use stdlib_math, only: arange, linspace
-  use stdlib_io_npy, only: load_npy
-  use stdlib_io, only: savetxt
+  ! use stdlib_math, only: arange, linspace
+  ! use stdlib_io_npy, only: load_npy
+  ! use stdlib_io, only: savetxt
   use surfker, only: fwdsurf1d, depthkernel1d
   use setup_att_log
   implicit none

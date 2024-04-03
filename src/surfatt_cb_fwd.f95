@@ -20,7 +20,7 @@ program surfatt_cb_fwd
   use tomo
   use setup_att_log, only: setuplog
   use argparse, only: argparse_cb_fwd
-  use stdlib_io_npy, only: save_npy
+  ! use stdlib_io_npy, only: save_npy
 
   implicit none
   

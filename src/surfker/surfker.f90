@@ -183,8 +183,7 @@ contains
 
   subroutine fwdsurf1d(vel,iwave,igr,tRc,depz,svel)
     integer, intent(in) :: iwave,igr
-    real(kind=dp), dimension(:) :: vel, depz
-    real(kind=dp), dimension(:) :: tRc
+    real(kind=dp), dimension(:), intent(in) :: vel, depz, tRc
     real(kind=dp), dimension(:), allocatable, intent(out) :: svel
     real, dimension(:), allocatable :: vpz,vsz,rhoz,rthk
     integer :: mmax, nz, kmaxRc, kk

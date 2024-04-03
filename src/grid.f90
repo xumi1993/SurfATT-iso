@@ -18,7 +18,6 @@ module grid
   use topo
   use utils
   use surfker, only: fwdsurf3d_mpi, fwdsurf3d_decomp
-  use stdlib_io_npy, only: save_npy
   use setup_att_log
 
   implicit none
@@ -108,8 +107,8 @@ module grid
                      am%zgrids,tmp)
       call at%read(ap%topo%topo_file)
       call at%grid_topo(am%xgrids, am%ygrids)
-      do ip = istart, iend
-        if (iend - istart >= 0) then
+      if (iend - istart >= 0) then
+        do ip = istart, iend
           sigma = tmp(ip) * this%periods(ip) * ap%topo%wavelen_factor*km2deg
           tmpto = at%smooth(sigma)
           this%topo_angle(ip,:,:) = at%calc_dip_angle(tmpto)
@@ -117,8 +116,8 @@ module grid
           this%a(ip,:,:) = (1+fy**2) / (1 + fx**2 + fy**2)
           this%b(ip,:,:) = (1+fx**2) / (1 + fx**2 + fy**2)
           this%c(ip,:,:) = fx*fy / (1 + fx**2 + fy**2)
-        endif
-      enddo
+        enddo
+      endif
     else
       if (myrank == 0) then
         this%a = 1.
@@ -127,6 +126,9 @@ module grid
       endif
     endif
     call synchronize_all()
+    ! if (myrank == 0) then
+    !   call save_npy("topo_angle.npy", this%topo_angle)
+    ! end if
     if (myrank == 0) then
       this%m11 = this%a
       this%m22 = this%b

@@ -3,7 +3,7 @@ module acqui_2d
   use para
   use grid, ag_ph => att_grid_global_ph, ag_gr => att_grid_global_gr
   use src_rec, sr_ph => src_rec_global_ph, sr_gr => src_rec_global_gr
-  use stdlib_math, only: linspace
+  ! use stdlib_math, only: linspace
 
   type, public :: att_acqui_2d
     real(kind=dp), dimension(:,:,:), pointer               :: svel, adj_s, &

@@ -18,8 +18,6 @@ module tomo
   use measadj
   use utils
   use h5fortran
-  use stdlib_io_npy, only: save_npy
-  use stdlib_logger, logger => global_logger
   use surfker, only: depthkernel_mpi
   use setup_att_log
 

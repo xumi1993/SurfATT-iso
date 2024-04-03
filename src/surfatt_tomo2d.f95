@@ -21,7 +21,7 @@ program surfatt_tomo2d
   use tomo2d
   use setup_att_log, only: setuplog
   use argparse, only: argparse_tomo2d
-  use stdlib_io_npy, only: save_npy
+  ! use stdlib_io_npy, only: save_npy
 
   implicit none
   

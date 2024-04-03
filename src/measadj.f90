@@ -67,8 +67,8 @@ module measadj
     ! this%tekio = zeros(this%nrec)
     vtmp = 1./vel2d
     call FSM_UW_PS_lonlat_2d(am%xgrids, am%ygrids,am%n_xyz(1),am%n_xyz(2),&
-                              m11, m22, -m12,&
-                              this%timetable,vtmp,this%srcx,this%srcy,ref_t)
+                             m11, m22, -m12,&
+                             this%timetable,vtmp,this%srcx,this%srcy,ref_t)
     this%tekio = interp2(am%xgrids, am%ygrids, this%timetable, this%recx, this%recy)
     this%chi = 0.5*sum(this%weight*(this%tekio - this%tt)**2)
   end subroutine run_forward
