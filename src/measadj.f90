@@ -104,12 +104,13 @@ module measadj
     call mask(am%xgrids,am%ygrids,am%n_xyz(1),am%n_xyz(2),density,this%srcx,this%srcy)
   end subroutine run_adjoint_density
 
-  subroutine to_table(this)
+  subroutine to_table(this, tt_fwd)
     class(att_measadj), intent(inout) :: this
+    real(kind=dp), dimension(:), intent(inout) :: tt_fwd
     integer :: i
     
     do i = 1, this%nrec
-      this%sr%tt_fwd(this%idx_path(i)) = this%tekio(i)
+      tt_fwd(this%idx_path(i)) = this%tekio(i)
     enddo
   end subroutine
 

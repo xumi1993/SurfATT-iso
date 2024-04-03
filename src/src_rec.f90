@@ -80,6 +80,7 @@ contains
     call bcast_all_singlei(this%nfield)
     
     ! allocate memory
+    ! this%tt_fwd = zeros(this%npath)
     call prepare_shm_array_dp_1d(this%tt_fwd, this%npath, win_tt_fwd)
     call prepare_shm_array_dp_1d(this%vel, this%npath, win_vel)
     call prepare_shm_array_dp_1d(this%stla, this%npath, win_stla)

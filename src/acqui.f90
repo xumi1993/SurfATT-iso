@@ -131,7 +131,7 @@ contains
     logical, optional, intent(in) :: verbose
     logical :: verbose_local
     real(kind=dp), intent(out) :: chi_global 
-    real(kind=dp), dimension(:), allocatable :: global_tt
+    real(kind=dp), dimension(:), allocatable :: local_tt
     real(kind=dp), dimension(:,:), allocatable :: adj, kden
     character(len=MAX_STRING_LEN) :: fname
     integer :: iz,i
@@ -144,7 +144,7 @@ contains
 
     chi_local = 0
     chi_global = 0
-    global_tt = zeros(this%sr%npath)
+    local_tt = zeros(this%sr%npath)
     ! Forward simulation for surface wave velocity
     if (verbose_local) call write_log("Calculating surface wave velocity from Vs model...",1,this%module)
     call this%ag%fwdsurf(am%vs3d_opt)
@@ -165,7 +165,7 @@ contains
         ! sum chi
         chi_local = chi_local + ma%chi
         ! save synthetic tt to table
-        if (istotable) call ma%to_table()
+        if (istotable) call ma%to_table(local_tt)
         if (isadj) then
           ! measure adjoint
           call ma%run_adjoint(this%ag%m11(this%isrcs(i, 1),:,:),this%ag%m22(this%isrcs(i,1),:,:),&
@@ -183,6 +183,7 @@ contains
       enddo
     endif
     call synchronize_all()
+    if (istotable) call sum_all_1Darray_dp(local_tt, this%sr%tt_fwd, this%sr%npath)
     ! reduce chi
     call sum_all_dp(chi_local, chi_global)
     call bcast_all_singledp(chi_global)

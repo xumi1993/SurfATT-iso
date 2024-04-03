@@ -157,7 +157,7 @@ contains
     type(att_measadj) :: ma
     real(kind=dp) :: chi_local, chi
     real(kind=dp), dimension(:,:), allocatable :: adj
-    real(kind=dp), dimension(acqui%sr%npath) :: global_tt
+    real(kind=dp), dimension(acqui%sr%npath) :: local_tt
     integer :: i, j
     logical :: istotable, isadj
 
@@ -176,7 +176,7 @@ contains
                             acqui%ag%m22(acqui%isrcs(i,1),:,:), acqui%ag%m12(acqui%isrcs(i,1),:,:),&
                             acqui%ag%ref_t(acqui%isrcs(i,1),:,:))
         ! to time table
-        if (istotable) call ma%to_table()
+        if (istotable) call ma%to_table(local_tt)
         ! measure adjoint
         if (isadj) then
           call ma%run_adjoint(acqui%ag%m11(acqui%isrcs(i, 1),:,:),acqui%ag%m22(acqui%isrcs(i,1),:,:),&
@@ -191,10 +191,7 @@ contains
     endif ! if ((acqui%iend-acqui%istart)>=0)
     call synchronize_all()
     call sum_all_dp(chi_local, chi)
-    if (istotable) then
-      call sum_all_1Darray_dp(acqui%sr%tt_fwd,global_tt,acqui%sr%npath)
-      if (myrank==0) acqui%sr%tt_fwd = global_tt
-    endif
+    if (istotable) call sum_all_1Darray_dp(local_tt, acqui%sr%tt_fwd,acqui%sr%npath)
   end subroutine forward_simulate
 
   subroutine optimize(this)
