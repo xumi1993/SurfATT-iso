@@ -79,8 +79,9 @@ program surfatt_tomo
 
   ! calculate CPU time 
   call cpu_time(t1)
-  write(att%message, '(a,f8.2,a)') 'Elapsed CPU time: ', t1-t0, ' s'
+  write(att%message, '(a,f0.2,a)') 'Elapsed CPU time: ', t1-t0, ' s'
   call write_log(att%message,1,att%module)
+
   ! MPI finish
   call finalize_mpi()
 end program surfatt_tomo

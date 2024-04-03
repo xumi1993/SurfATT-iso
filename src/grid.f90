@@ -150,7 +150,6 @@ module grid
     ! print *, myrank, maxval(tmpvel), minval(tmpvel)
     call amd%collect_grid(tmpvel, this%svel)
     call synchronize_all()
-    if (myrank == 0) call save_npy("svel.npy", this%svel)
     
   end subroutine fwdsurf
 end module
