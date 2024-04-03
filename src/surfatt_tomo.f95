@@ -28,12 +28,14 @@ program surfatt_tomo
   type(att_tomo) :: att
   character(len=MAX_STRING_LEN) :: fname
   logical :: isfwd
+  real(kind=dp) :: t0, t1
 
   ! initialize MPI
   call init_mpi()
   call world_rank(myrank)
   call world_size(mysize)
 
+  call cpu_time(t0)
   ! read command line arguments
   call argparse_tomo(fname, isfwd)
 
@@ -75,6 +77,10 @@ program surfatt_tomo
     call att%do_inversion()
   endif
 
+  ! calculate CPU time 
+  call cpu_time(t1)
+  write(att%message, '(a,f8.2,a)') 'Elapsed CPU time: ', t1-t0, ' s'
+  call write_log(att%message,1,att%module)
   ! MPI finish
   call finalize_mpi()
 end program surfatt_tomo

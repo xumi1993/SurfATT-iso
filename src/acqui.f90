@@ -31,7 +31,8 @@ module acqui
     logical                                                :: is_fwd
     character(len=MAX_STRING_LEN)                          :: model_fname, module='ACQUI',&
                                                               final_fname, gr_name, message
-    real(kind=dp), dimension(:,:,:,:), pointer             :: adj_s,adj_eta, adj_density
+    real(kind=dp), dimension(:,:,:,:), pointer             :: adj_s, adj_density
+    real(kind=dp), dimension(:,:,:,:), allocatable         :: adj_s_local, adj_density_local
     real(kind=dp), dimension(:,:,:,:), pointer             :: sen_vsRc, sen_vpRc, sen_rhoRc
     real(kind=dp), dimension(:,:,:), pointer               :: ker_beta, ker_density
     integer, dimension(:,:), pointer                       :: isrcs
@@ -39,7 +40,7 @@ module acqui
     contains
     procedure :: init => att_acqui_init, scatter => att_scatter_src_gather, post_proc => post_processing_for_kernel
     procedure :: allocate_shm_arrays, prepare_inv, regularize_ker_density, post_proc_eikokernel,&
-                 post_proc_ker_density, forward_simulate, depthkernel, combine_kernels
+                 forward_simulate, depthkernel, combine_kernels
   end type att_acqui
 
   type(att_acqui), target, public                          :: att_acqui_global_ph, att_acqui_global_gr
@@ -107,6 +108,8 @@ contains
   subroutine prepare_inv(this)
     class(att_acqui), intent(inout) :: this
 
+    this%adj_s_local = zeros(this%sr%nperiod, am%n_xyz(1), am%n_xyz(2), am%n_xyz(3))
+    this%adj_density_local = zeros(this%sr%nperiod, am%n_xyz(1), am%n_xyz(2), am%n_xyz(3))
     if (myrank == 0) then
       this%sr%tt_fwd = 0._dp
       this%adj_s = 0._dp
@@ -170,13 +173,11 @@ contains
           ! measure adjoint
           call ma%run_adjoint(this%ag%m11(this%isrcs(i, 1),:,:),this%ag%m22(this%isrcs(i,1),:,:),&
                               this%ag%m12(this%isrcs(i,1),:,:),adj)
-          ! post proc of eikonal kernel
-          call this%post_proc_eikokernel(this%isrcs(i,1), adj, ma%timetable)
           ! kernel density
           call ma%run_adjoint_density(this%ag%m11(this%isrcs(i, 1),:,:), this%ag%m22(this%isrcs(i,1),:,:),&
                                       this%ag%m12(this%isrcs(i,1),:,:),kden)
-          ! post proc kernel density
-          call this%post_proc_ker_density(this%isrcs(i,1), kden)
+          ! post proc of eikonal kernel
+          call this%post_proc_eikokernel(this%isrcs(i,1), adj, ma%timetable)
         endif
         ! distribute measadj
         call ma%distory()
@@ -229,6 +230,8 @@ contains
     integer :: ip, i
 
     call write_log('Combining eikonal and surface wave kernels...',1,this%module)
+    call sum_all_1Darray_dp(this%adj_s_local, this%adj_s, this%sr%nperiod*am%n_xyz(1)*am%n_xyz(2)*am%n_xyz(3))
+    call sum_all_1Darray_dp(this%adj_density_local, this%adj_density, this%sr%nperiod*am%n_xyz(1)*am%n_xyz(2)*am%n_xyz(3))
     if (myrank == 0) then
       do ip = 1, this%sr%nperiod
         this%ker_beta = this%ker_beta -this%adj_s(ip,:,:,:) * this%sen_vsRc(ip,:,:,:)
@@ -305,30 +308,21 @@ contains
     ! precond = precond/maxval(abs(precond))
   end subroutine regularize_ker_density
 
-  subroutine post_proc_eikokernel(this, pidx, adjtable, timetable)
+  subroutine post_proc_eikokernel(this, pidx, adjtable, kden)
     class(att_acqui), intent(inout) :: this
     integer, intent(inout) :: pidx
     real(kind=dp), dimension(:,:),allocatable :: Tx, Ty
     ! real(kind=dp), dimension(:,:,:,:), allocatable :: adj_s_local, adj_xi_local, adj_eta_local
-    real(kind=dp),  dimension(:,:), allocatable, intent(in) :: adjtable, timetable
+    real(kind=dp),  dimension(:,:), intent(in) :: adjtable, kden
     real(kind=dp), dimension(am%n_xyz(1), am%n_xyz(2)) :: vtmp, lat_corr
     integer :: i, j, k
 
     vtmp = 1/this%ag%svel(pidx, :,:)
     do i = 1, am%n_xyz(3)
-      this%adj_s(pidx, :,:,i) = this%adj_s(pidx, :,:,i)+adjtable * vtmp**3
+      this%adj_s_local(pidx, :,:,i) = this%adj_s_local(pidx, :,:,i)+adjtable * vtmp**3
+      this%adj_density_local(pidx, :,:,i) = this%adj_density_local(pidx, :,:,i)+kden
     enddo
   end subroutine post_proc_eikokernel
-
-  subroutine post_proc_ker_density(this, pidx, kden)
-    class(att_acqui), intent(inout) :: this
-    integer, intent(in) :: pidx
-    real(kind=dp), dimension(:,:), allocatable, intent(in) :: kden
-    integer :: i
-    do i = 1, am%n_xyz(3)
-      this%adj_density(pidx,:,:,i) = this%adj_density(pidx,:,:,i)+kden
-    enddo
-  end subroutine post_proc_ker_density
 
   subroutine allocate_shm_arrays(this)
     class(att_acqui), intent(inout) :: this
