@@ -33,6 +33,10 @@ contains
       this%glob_py = f1
     end if
 
+    if (nx < this%glob_px .or. ny < this%glob_py) then
+      call exit_MPI(myrank,'Error: Number of processors is larger than the number of cells')
+    end if
+
     allocate(this%glob_ix(mysize, 2))
     allocate(this%glob_iy(mysize, 2))
     this%loc_ix_start = 1 + (mod(myrank, this%glob_px)) * (nx / this%glob_px)
