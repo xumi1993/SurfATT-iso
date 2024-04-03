@@ -12,7 +12,7 @@
 !=====================================================================
 module topo
   use shared_par
-  use h5fortran
+  use hdf5_interface
   use utils
   use sph2loc
   use my_mpi
@@ -26,6 +26,7 @@ module topo
     real(kind=dp) :: dx, dy
     contains
     procedure :: read => read_topo, smooth => gaussian_smooth, &
+                 read_parallel => read_topo_mpi, &
                  grid_topo, calc_dip_angle, rotate, write
   end type att_topo
   
@@ -33,42 +34,41 @@ module topo
   
   contains
 
-  subroutine read_topo(this, fname)
+  subroutine read_topo_mpi(this, fname)
     class(att_topo), intent(inout) :: this
     character(len=MAX_STRING_LEN) :: fname
     type(hdf5_file) :: h
-    integer(HSIZE_T), allocatable :: dimlo(:), dimla(:)
-    
-    ! fname = trim(ap%topo%topo_file)
-    if(.not. is_hdf5(fname)) then
-      print *, trim(fname),' is not a hdf5 file'
-      stop
-    end if
     
     if (myrank == 0) then
-      call h%open(fname, action='r')
-      call h%shape('/lon', dimlo)
-      call h%shape('/lat', dimla)
-      this%dims = [dimlo(1), dimla(1)]
-      call h%close()
-    end if
-    call bcast_all_i(this%dims, 2)
-    allocate(this%lon(this%dims(1)), this%lat(this%dims(2)), this%z(this%dims(1), this%dims(2)))
-    ! open file
-    if (myrank == 0) then
-      call h5read(fname, '/lon', this%lon)
-      call h5read(fname, '/lat', this%lat)
-      call h5read(fname, '/z', this%z)
-      this%z = this%z/1000
-      this%dx = this%lon(2) - this%lon(1)
-      this%dy = this%lat(2) - this%lat(1)
+      call this%read(fname)
     end if
     call synchronize_all()
+    call bcast_all_i(this%dims, 2)
+    if (myrank /= 0) then
+      allocate(this%lon(this%dims(1)), this%lat(this%dims(2)),&
+               this%z(this%dims(1), this%dims(2)))
+    end if
     call bcast_all_dp(this%lon, this%dims(1))
     call bcast_all_dp(this%lat, this%dims(2))
     call bcast_all_dp(this%z, this%dims(1)*this%dims(2))
     call bcast_all_singledp(this%dx)
-    call bcast_all_singledp(this%dy)  
+    call bcast_all_singledp(this%dy)
+  end subroutine read_topo_mpi
+
+  subroutine read_topo(this, fname)
+    class(att_topo), intent(inout) :: this
+    character(len=MAX_STRING_LEN) :: fname
+    type(hdf5_file) :: h
+    
+    call h%open(fname, status='old')
+    call h%get('/lon', this%lon)
+    call h%get('/lat', this%lat)
+    call h%get('/z', this%z)
+    this%z = this%z/1000
+    this%dx = this%lon(2) - this%lon(1)
+    this%dy = this%lat(2) - this%lat(1)
+    call h%close()
+    this%dims = [size(this%lon), size(this%lat)]
   end subroutine read_topo
 
   function gaussian_smooth(this, sigma) result(topo)
@@ -161,9 +161,9 @@ module topo
     open(unit=IOUT, iostat=stat, file=fname, status='old')
     if (stat == 0) close(IOUT, status='delete')
     call h%open(fname, action='w')
-    call h%write('/lon', this%lon)
-    call h%write('/lat', this%lat)
-    call h%write('/z', this%z)
+    call h%add('/lon', this%lon)
+    call h%add('/lat', this%lat)
+    call h%add('/z', this%z)
     call h%close()
 
   end subroutine write

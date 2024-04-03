@@ -101,7 +101,7 @@ module grid
 
     if (ap%topo%is_consider_topo) then
       call write_log("Reading topography file",1, this%module)
-      call at%read(ap%topo%topo_file)
+      call at%read_parallel(ap%topo%topo_file)
       call at%grid_topo(am%xgrids, am%ygrids)
       allocate(tmp(this%nperiod))
       call scatter_all_i(this%nperiod, mysize, myrank, istart, iend)

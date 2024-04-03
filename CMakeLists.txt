@@ -10,7 +10,7 @@ set(CMAKE_Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/modules)
 if ("${CMAKE_Fortran_COMPILER_ID}" MATCHES "GNU")
   set(MPI_Fortran_COMPILE_FLAGS "-ffixed-line-length-none -fmax-errors=10 -ftree-vectorize -march=native -O3 -ffast-math")
 elseif ("${CMAKE_Fortran_COMPILER_ID}" MATCHES "Intel")
-  set(MPI_Fortran_COMPILE_FLAGS "-ffixed-line-length-none -xHost -O3")
+  set(MPI_Fortran_COMPILE_FLAGS "-132 -xHost -O3")
 endif()
 set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} ${MPI_Fortran_COMPILE_FLAGS}")
 
@@ -22,6 +22,9 @@ set(SOURCE_DIR "${PROJECT_SOURCE_DIR}/src")
 find_package(MPI REQUIRED)
 message(STATUS "MPI_FOUND: ${MPI_FOUND}")
 message(STATUS "MPI_VERSION: ${MPI_VERSION}")
+
+find_package(HDF5 COMPONENTS HL REQUIRED)
+include_directories(SYSTEM ${HDF5_INCLUDE_DIRS} ${HDF5_HL_INCLUDE_DIR})
 
 # add sub modules
 add_subdirectory("${PROJECT_SOURCE_DIR}/external_libs")
@@ -62,6 +65,8 @@ foreach(execsourcefile ${APP_SOURCES})
   
   # link h5fortran
   target_link_libraries(${EXEC_NAME} PUBLIC h5fortran)
+
+  target_link_libraries(${EXEC_NAME} PUBLIC ${HDF5_LIBRARIES} ${HDF5_HL_LIBRARIES})
 
   # link surfatt_modules
   target_link_libraries(${EXEC_NAME} PUBLIC shared_obj surfker_obj surfatt_modules)
