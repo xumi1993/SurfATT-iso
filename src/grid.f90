@@ -95,40 +95,35 @@ module grid
     type(att_topo) :: at
     real(kind=dp), dimension(:), allocatable :: tmp, periods
     real(kind=dp), dimension(:,:), allocatable :: tmpto, fx, fy
-    real(kind=dp), dimension(:,:,:), allocatable :: angle_local, a_local, b_local, c_local
     real(kind=dp) :: sigma
+    character(len=MAX_STRING_LEN) :: name
     integer :: win_topo, igr, ip, ix, iy, istart, iend
 
     if (ap%topo%is_consider_topo) then
       call write_log("Reading topography file",1, this%module)
-      allocate(tmp(this%nperiod))
-      allocate(angle_local(this%nperiod, am%n_xyz(1), am%n_xyz(2)))
-      allocate(a_local(this%nperiod, am%n_xyz(1), am%n_xyz(2)))
-      allocate(b_local(this%nperiod, am%n_xyz(1), am%n_xyz(2)))
-      allocate(c_local(this%nperiod, am%n_xyz(1), am%n_xyz(2)))
-      call scatter_all_i(this%nperiod, mysize, myrank, istart, iend)
-      call fwdsurf1d(am%vs1d,ap%data%iwave,&
-                     igr,this%periods,&
-                     am%zgrids,tmp)
       call at%read(ap%topo%topo_file)
       call at%grid_topo(am%xgrids, am%ygrids)
+      allocate(tmp(this%nperiod))
+      call scatter_all_i(this%nperiod, mysize, myrank, istart, iend)
+      if (myrank == 0) then
+        call fwdsurf1d(am%vs1d,ap%data%iwave,&
+                     igr,this%periods,&
+                     am%zgrids,tmp)
+      endif
+      call synchronize_all()
+      call bcast_all_dp(tmp, this%nperiod)
       if (iend - istart >= 0) then
         do ip = istart, iend
           sigma = tmp(ip) * this%periods(ip) * ap%topo%wavelen_factor*km2deg
           tmpto = at%smooth(sigma)
-          ! print *, myrank, maxval(tmpto), minval(tmpto)
-          angle_local(ip,:,:) = at%calc_dip_angle(tmpto)
+          this%topo_angle(ip,:,:) = at%calc_dip_angle(tmpto)
           call gradient_2_geo(tmpto, am%xgrids, am%ygrids, fx, fy)
-          a_local(ip,:,:) = (1+fy**2) / (1 + fx**2 + fy**2)
-          b_local(ip,:,:) = (1+fx**2) / (1 + fx**2 + fy**2)
-          c_local(ip,:,:) = fx*fy / (1 + fx**2 + fy**2)
+          this%a(ip,:,:) = (1+fy**2) / (1 + fx**2 + fy**2)
+          this%b(ip,:,:) = (1+fx**2) / (1 + fx**2 + fy**2)
+          this%c(ip,:,:) = fx*fy / (1 + fx**2 + fy**2)
         enddo
       endif
       call synchronize_all()
-      call sum_all_1Darray_dp(angle_local, this%topo_angle, this%nperiod*am%n_xyz(1)*am%n_xyz(2))
-      call sum_all_1Darray_dp(a_local, this%a, this%nperiod*am%n_xyz(1)*am%n_xyz(2))
-      call sum_all_1Darray_dp(b_local, this%b, this%nperiod*am%n_xyz(1)*am%n_xyz(2))
-      call sum_all_1Darray_dp(c_local, this%c, this%nperiod*am%n_xyz(1)*am%n_xyz(2))
     else
       if (myrank == 0) then
         this%a = 1.

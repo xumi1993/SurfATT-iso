@@ -419,7 +419,7 @@ end function
 
   pure function linspace_r8r8(first, last, n)
     real(kind = DPRE), dimension(:), allocatable :: linspace_r8r8
-    real(kind = 8), intent(in) :: first, last
+    real(kind = DPRE), intent(in) :: first, last
     integer(kind = IPRE), intent(in) :: n
     integer(kind = IPRE) :: i
     real(kind = DPRE) :: step
@@ -427,12 +427,13 @@ end function
     allocate(linspace_r8r8(n))
     step = ( last - first ) / ( n-1 )
     linspace_r8r8 = first + step * real([ ( i-1, i = 1, n ) ], DPRE)
+    linspace_r8r8(n) = last
     return
   end function linspace_r8r8
 
   pure function linspace_i4i4(first, last, n)
     real(kind = DPRE), dimension(:), allocatable :: linspace_i4i4
-    integer(kind = 4), intent(in) :: first, last
+    integer, intent(in) :: first, last
     integer(kind = IPRE), intent(in) :: n
 
     linspace_i4i4 = linspace(real(first, kind = 8), real(last, kind = 8), n)
@@ -441,18 +442,18 @@ end function
 
   pure function linspace_r8i4(first, last, n)
     real(kind = DPRE), dimension(:), allocatable :: linspace_r8i4
-    real(kind = 8), intent(in) :: first
-    integer(kind = 4), intent(in) :: last
+    real(kind = DPRE), intent(in) :: first
+    integer, intent(in) :: last
     integer(kind = IPRE), intent(in) :: n
 
-    linspace_r8i4 = linspace(first, real(last, kind = 8), n)
+    linspace_r8i4 = linspace(first, real(last, kind = DPRE), n)
     return
   end function linspace_r8i4
 
   pure function linspace_i4r8(first, last, n)
     real(kind = DPRE), dimension(:), allocatable :: linspace_i4r8
-    integer(kind = 4), intent(in) :: first
-    real(kind = 8), intent(in) :: last
+    integer, intent(in) :: first
+    real(kind = DPRE), intent(in) :: last
     integer(kind = IPRE), intent(in) :: n
 
     linspace_i4r8 = linspace(real(first, kind = 8), last, n)

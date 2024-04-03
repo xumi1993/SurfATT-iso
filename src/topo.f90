@@ -11,22 +11,25 @@
 !
 !=====================================================================
 module topo
-  use constants
+  use shared_par
   use h5fortran
   use utils
   use sph2loc
+  use my_mpi
 
   implicit none
 
   type, public :: att_topo
     real(kind=dp), dimension(:), allocatable :: lon, lat
-    real(kind=dp), dimension(:,:), allocatable :: z, angle
-    integer(HSIZE_T), dimension(2) :: dims
+    real(kind=dp), dimension(:,:), allocatable :: z
+    integer, dimension(2) :: dims
     real(kind=dp) :: dx, dy
     contains
     procedure :: read => read_topo, smooth => gaussian_smooth, &
                  grid_topo, calc_dip_angle, rotate, write
   end type att_topo
+  
+  integer :: win_to_lat, win_to_lon, win_to_z
   
   contains
 
@@ -41,22 +44,31 @@ module topo
       print *, trim(fname),' is not a hdf5 file'
       stop
     end if
-
-    call h%open(fname, action='r')
-    call h%shape('/lon', dimlo)
-    call h%shape('/lat', dimla)
-    this%dims = [dimlo(1), dimla(1)]
-    allocate(this%lon(dimlo(1)), this%lat(dimla(1)),&
-             this%z(dimlo(1),dimla(1)))
+    
+    if (myrank == 0) then
+      call h%open(fname, action='r')
+      call h%shape('/lon', dimlo)
+      call h%shape('/lat', dimla)
+      this%dims = [dimlo(1), dimla(1)]
+      call h%close()
+    end if
+    call bcast_all_i(this%dims, 2)
+    allocate(this%lon(this%dims(1)), this%lat(this%dims(2)), this%z(this%dims(1), this%dims(2)))
     ! open file
-    call h5read(fname, '/lon', this%lon)
-    call h5read(fname, '/lat', this%lat)
-    call h5read(fname, '/z', this%z)
-    call h%close()
-    this%z = this%z/1000
-    this%dx = this%lon(2) - this%lon(1)
-    this%dy = this%lat(2) - this%lat(1)
-
+    if (myrank == 0) then
+      call h5read(fname, '/lon', this%lon)
+      call h5read(fname, '/lat', this%lat)
+      call h5read(fname, '/z', this%z)
+      this%z = this%z/1000
+      this%dx = this%lon(2) - this%lon(1)
+      this%dy = this%lat(2) - this%lat(1)
+    end if
+    call synchronize_all()
+    call bcast_all_dp(this%lon, this%dims(1))
+    call bcast_all_dp(this%lat, this%dims(2))
+    call bcast_all_dp(this%z, this%dims(1)*this%dims(2))
+    call bcast_all_singledp(this%dx)
+    call bcast_all_singledp(this%dy)  
   end subroutine read_topo
 
   function gaussian_smooth(this, sigma) result(topo)
@@ -72,25 +84,36 @@ module topo
     class(att_topo), intent(inout) :: this
     real(kind=dp), dimension(:), intent(in) :: xgrids, ygrids
     real(kind=dp), dimension(:,:), allocatable :: xx, yy, topo_tmp
-    integer :: i, j, k
+    integer :: i, j, k, ierr
     real(kind=dp) :: dist, az, baz, delta, sigma3, w, s
     integer :: nx, ny, count
-
-    if(xgrids(1) < this%lon(1) .or. xgrids(size(xgrids)) > this%lon(this%dims(1)) .or. &
-       ygrids(1) < this%lat(1) .or. ygrids(size(ygrids)) > this%lat(this%dims(2)) ) then
-      print *, 'Error: Grid points are out of range'
-      stop
-    end if
-
+    
     nx = size(xgrids)
     ny = size(ygrids)
-    call meshgrid2(xgrids, ygrids, xx, yy)
-    topo_tmp = transpose(interp2(this%lat, this%lon, this%z, yy, xx))
-    deallocate(this%z, this%lat, this%lon)
-    this%dims = [nx, ny]
-    this%lon = xgrids
-    this%lat = ygrids
-    this%z = topo_tmp
+    this%dx = xgrids(2) - xgrids(1)
+    this%dy = ygrids(2) - ygrids(1)
+    if (myrank == 0) then
+      if(xgrids(1) < this%lon(1) .or. xgrids(size(xgrids)) > this%lon(this%dims(1)) .or. &
+        ygrids(1) < this%lat(1) .or. ygrids(size(ygrids)) > this%lat(this%dims(2)) ) then
+        print *, 'Error: Grid points are out of range'
+        stop
+      end if
+      call meshgrid2(xgrids, ygrids, xx, yy)
+      topo_tmp = transpose(interp2(this%lat, this%lon, this%z, yy, xx))
+      deallocate(this%z, this%lat, this%lon)
+      this%dims = [nx, ny]
+      this%lon = xgrids
+      this%lat = ygrids
+      this%z = topo_tmp
+    else
+      deallocate(this%z, this%lat, this%lon)
+      allocate(this%lon(nx), this%lat(ny), this%z(nx, ny))  
+    endif
+    call synchronize_all()
+    call bcast_all_i(this%dims, 2)
+    call bcast_all_dp(this%lon, this%dims(1))
+    call bcast_all_dp(this%lat, this%dims(2))
+    call bcast_all_dp(this%z, this%dims(1)*this%dims(2))
   end subroutine grid_topo
 
   function calc_dip_angle(this, topo) result(angle)

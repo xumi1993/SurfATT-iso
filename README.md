@@ -6,7 +6,7 @@
 This is an innovative package for **Surf**ace wave **A**djoint **T**ravel-time **T**omography driven by modern fortran with highlights:
 
 - Calculation of surface wave travel time based on **Eikonal equation** with fast sweeping method ([Tong, 2021a](https://doi.org/10.1029/2021JB021818))
-- Computation of isotropic and anisotropic sensitivity kernels through **adjoint method** ([Tong, 2021b](https://doi.org/10.1029/2021JB022365))
+- Computation of sensitivity kernels through **adjoint method** ([Tong, 2021b](https://doi.org/10.1029/2021JB022365))
 - **Multi-grid model parametrization** utilization in optimization ([Tong et al., 2019](https://doi.org/10.1093/gji/ggz151))
 - Consideration of **surface topography** ([Hao et al., 2024a](https://doi.org/10.1029/2023JB027454))
 
