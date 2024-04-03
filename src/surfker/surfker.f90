@@ -34,6 +34,34 @@ contains
     enddo
   end subroutine depthkernel_mpi
 
+  subroutine depthkernel_decomp(vs3d,ix_start,ix_end,iy_start,iy_end,&
+                                iwave,igr,tRc,depz,&
+                                sen_vsRc,sen_vpRc,sen_rhoRc)
+    real(kind=dp), dimension(:,:,:), intent(in) :: vs3d
+    real(kind=dp), dimension(:), intent(in) :: tRc
+    real(kind=dp), dimension(:), intent(in) :: depz
+    real(kind=dp), dimension(:,:,:,:), allocatable, intent(out) :: sen_vsRc, sen_vpRc, sen_rhoRc
+    integer, intent(in) :: iwave, igr, ix_start,ix_end,iy_start,iy_end
+    integer :: nz,kmaxRc, ii, jj, i, j
+
+    nz = size(depz)
+    kmaxRc = size(tRc)
+    allocate(sen_vsRc(kmaxRc,ix_end-ix_start+1,iy_end-iy_start+1,nz))
+    allocate(sen_vpRc(kmaxRc,ix_end-ix_start+1,iy_end-iy_start+1,nz))
+    allocate(sen_rhoRc(kmaxRc,ix_end-ix_start+1,iy_end-iy_start+1,nz))
+    do i = ix_start, ix_end
+      do j = iy_start, iy_end
+        ii = i-ix_start+1
+        jj = j-iy_start+1
+        call depthkernel1d(vs3d(i,j,:),nz,iwave,igr,kmaxRc,tRc,depz,&
+                         sen_vsRc(1:kmaxRc,ii,jj,1:nz),&
+                         sen_vpRc(1:kmaxRc,ii,jj,1:nz),&
+                         sen_rhoRc(1:kmaxRc,ii,jj,1:nz))
+      enddo
+    enddo
+    
+  end subroutine depthkernel_decomp
+
   subroutine depthkernel1d(vel,nz,iwave,igr,kmaxRc,tRc,depz,&
                           sen_vsRc,sen_vpRc,sen_rhoRc)
     integer ::  nz, kmaxRc, iwave,igr
@@ -119,31 +147,61 @@ contains
 
     nz = size(vel,3)
     kmaxRc = size(tRc)
-    allocate(vsz(nz), tmpv(kmaxRc))
+    allocate(vsz(nz))
     do ii = istart, iend
       vsz(1:nz)=vel(igrid(ii,1),igrid(ii,2),1:nz)
-      tmpv = 0._dp
-      call fwdsurf1d(vsz,nz,iwave,igr,kmaxRc,tRc,depz,tmpv)
+      call fwdsurf1d(vsz,iwave,igr,tRc,depz,tmpv)
       svel(1:kmaxRc, igrid(ii,1),igrid(ii,2)) = tmpv(1:kmaxRc)
     enddo
   end subroutine fwdsurf3d_mpi
 
-  subroutine fwdsurf1d(vel,nz,iwave,igr,kmaxRc,tRc,depz,svel)
-    integer, intent(in) :: nz, kmaxRc, iwave,igr
-    real(kind=dp), dimension(nz) :: vel, depz
-    real(kind=dp), dimension(kmaxRc) :: tRc
-    real(kind=dp), dimension(kmaxRc), intent(out) :: svel
+  subroutine fwdsurf3d_decomp(vel,ix_start,ix_end,iy_start,iy_end,&
+                              iwave,igr,tRc,depz,svel)
+    real(kind=dp), dimension(:,:,:), intent(in) :: vel
+    real(kind=dp), dimension(:), intent(in) :: tRc
+    real(kind=dp), dimension(:), intent(in) :: depz
+    real(kind=dp), dimension(:,:,:), allocatable, intent(out) :: svel
+    integer, intent(in) :: iwave, igr, ix_start,ix_end,iy_start,iy_end
+    integer :: nx, ny, nz,kmaxRc, ii, jj, i, j
+    real(kind=dp), dimension(:), allocatable :: vsz, tmpv
 
-    real, dimension(nz) :: vpz,vsz,rhoz,rthk
-    integer mmax
-    integer kk
+    nx = size(vel,1)
+    ny = size(vel,2)
+    nz = size(vel,3)
+    kmaxRc = size(tRc)
+    allocate(vsz(nz))
+    allocate(svel(kmaxRc,ix_end-ix_start+1,iy_end-iy_start+1))
+    do i = ix_start, ix_end
+      do j = iy_start, iy_end
+        ii = i-ix_start+1
+        jj = j-iy_start+1
+        call fwdsurf1d(vel(i,j,:),iwave,igr,tRc,depz,tmpv)
+        svel(1:kmaxRc, ii,jj) = tmpv(1:kmaxRc)
+      enddo
+    enddo
+  end subroutine fwdsurf3d_decomp
 
+  subroutine fwdsurf1d(vel,iwave,igr,tRc,depz,svel)
+    integer, intent(in) :: iwave,igr
+    real(kind=dp), dimension(:) :: vel, depz
+    real(kind=dp), dimension(:) :: tRc
+    real(kind=dp), dimension(:), allocatable, intent(out) :: svel
+    real, dimension(:), allocatable :: vpz,vsz,rhoz,rthk
+    integer :: mmax, nz, kmaxRc, kk
+
+    nz = size(depz)
+    kmaxRc = size(tRc)
     mmax=nz
+    vsz = zeros(nz)
+    vpz = zeros(nz)
+    rhoz = zeros(nz)
+    rthk = zeros(nz)
+    svel = zeros(kmaxRc)
     vsz(1:nz)=real(vel(1:nz))
     ! some other emperical relationship maybe better, 
     ! This is from Tomas M.Brocher 2005 BSSA
     call get_vprho(vsz, nz, vpz, rhoz)
-    do kk=1,mmax
+    do kk=1,mmax-1
       rthk(kk) = depz(kk+1)-depz(kk)
     enddo
     !!half space
@@ -156,22 +214,26 @@ contains
 
   end subroutine fwdsurf1d
 
-  subroutine correct_depth(ker_vs, ker_vp, ker_rho, dip_angle, igrid,istart,iend, depz)
+  subroutine correct_depth(ker_vs, ker_vp, ker_rho, dip_angle, &
+                           ix_start, ix_end, iy_start, iy_end, depz)
     real(kind=dp), dimension(:,:,:,:), intent(inout) :: ker_vs, ker_vp, ker_rho
     real(kind=dp), dimension(:,:,:), intent(in) :: dip_angle
-    integer, intent(in) :: istart, iend
-    integer, dimension(:,:), intent(in) :: igrid
+    integer, intent(in) ::  ix_start, ix_end, iy_start, iy_end
     real(kind=dp), dimension(:), intent(in) :: depz
     real(kind=dp), dimension(:), allocatable :: newz
-    integer :: i, np, j
+    integer :: i, np, j, k, ii, jj
 
     np = size(dip_angle,1)
-    do i = istart, iend
-      do j = 1, np
-        newz = depz/cosd(dip_angle(j, igrid(i,1),igrid(i,2)))
-        ker_vs(j,igrid(i,1),igrid(i,2),:) = interp1(depz, ker_vs(j,igrid(i,1),igrid(i,2),:), newz)
-        ker_vp(j,igrid(i,1),igrid(i,2),:) = interp1(depz, ker_vp(j,igrid(i,1),igrid(i,2),:), newz)
-        ker_rho(j,igrid(i,1),igrid(i,2),:) = interp1(depz, ker_rho(j,igrid(i,1),igrid(i,2),:), newz)
+    do i = ix_start, ix_end
+      do j = iy_start, iy_end
+        ii = i-ix_start+1
+        jj = j-iy_start+1
+        do k = 1, np
+          newz = depz/cosd(dip_angle(k, i, j))
+          ker_vs(k,ii,jj,:) = interp1(depz, ker_vs(k,ii,jj,:), newz)
+          ker_vp(k,ii,jj,:) = interp1(depz, ker_vp(k,ii,jj,:), newz)
+          ker_rho(k,ii,jj,:) = interp1(depz, ker_rho(k,ii,jj,:), newz)
+        enddo
       enddo
     enddo
     

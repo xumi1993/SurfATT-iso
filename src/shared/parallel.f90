@@ -603,6 +603,19 @@ module my_mpi
 
   end subroutine max_all_i
 
+  subroutine max_all_all_i(sendbuf, recvbuf)
+
+  ! use my_mpi
+
+  implicit none
+
+  integer :: sendbuf, recvbuf
+  integer :: ier
+
+  call MPI_ALLREDUCE(sendbuf,recvbuf,1,MPI_INTEGER,MPI_MAX,my_local_mpi_comm_world,ier)
+
+  end subroutine max_all_all_i
+
 !
 !-------------------------------------------------------------------------------------------------
 !

@@ -14,6 +14,7 @@ module tomo
   use para, ap => att_para_global
   use model, am => att_model_global
   use acqui, aq_ph => att_acqui_global_ph, aq_gr => att_acqui_global_gr
+  use decomposer, amd => att_mesh_decomposer_global
   use measadj
   use utils
   use h5fortran

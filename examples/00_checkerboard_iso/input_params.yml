@@ -9,7 +9,7 @@ data:
   src_rec_file_gr: OUTPUT_FILES/src_rec_file_forward_gr.csv
   # src_rec_file: /home/xumijian/Codes/SurfATT/test/00_checkerboard_iso/src_rec_test_all.csv
   iwave: 2 # 1 Love wave, 2 Rayleigh wave
-  vel_type: [True, True] # use phase velocity, group velocity or both
+  vel_type: [True, False] # use phase velocity, group velocity or both
   weights: [0.5, 0.5] # weights for phase and group velocity
 
 output:
@@ -42,4 +42,4 @@ inversion:
   # ------- optimization parameters -------
   optim_method: 0 # 0: SD; 1: Halving step
   step_length: 0.02 # starting step length
-  maxshrink: 0.8 # max step length decent
+  maxshrink: 0.6 # max step length decent

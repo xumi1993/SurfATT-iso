@@ -15,6 +15,7 @@ module acqui
   use para
   use grid, ag_ph => att_grid_global_ph, ag_gr => att_grid_global_gr
   use src_rec, sr_ph => src_rec_global_ph, sr_gr => src_rec_global_gr
+  use decomposer, amd => att_mesh_decomposer_global
   use setup_att_log
   use measadj
   use surfker
@@ -198,15 +199,23 @@ contains
     !!   sen_vpRc: a 4D array of real numbers representing the sensitivity kernel for Vp
     !!   sen_rhoRc: a 4D array of real numbers representing the sensitivity kernel for density
     class(att_acqui), intent(inout) :: this
+    real(kind=dp), dimension(:,:,:,:), allocatable :: loc_sen_vsRc, loc_sen_vpRc, loc_sen_rhoRc
 
     call write_log('Computing depth kernel...',1,this%module)
     ! compoute depth kernel
-    call depthkernel_mpi(am%vs3d_opt,am%igrid,am%grid_istart,am%grid_iend,&
-                         ap%data%iwave,ap%data%igr,this%sr%periods,am%zgrids,&
-                         this%sen_vsRc,this%sen_vpRc,this%sen_rhoRc)
-    call correct_depth(this%sen_vsRc, this%sen_vpRc, this%sen_rhoRc,&
-                       this%ag%topo_angle, am%igrid,&
-                       am%grid_istart, am%grid_iend, am%zgrids)
+    call depthkernel_decomp(am%vs3d_opt,amd%loc_ix_start,amd%loc_ix_end,&
+                            amd%loc_iy_start,amd%loc_iy_end,&                      
+                            ap%data%iwave,ap%data%igr,this%sr%periods,am%zgrids,&
+                            loc_sen_vsRc,loc_sen_vpRc,loc_sen_rhoRc)
+    if (ap%topo%is_consider_topo) then
+      call correct_depth(loc_sen_vsRc, loc_sen_vpRc, loc_sen_rhoRc,&
+                        this%ag%topo_angle, amd%loc_ix_start,amd%loc_ix_end,&
+                        amd%loc_iy_start,amd%loc_iy_end, am%zgrids)
+    endif
+    call synchronize_all()
+    ! gather depth kernel
+    call amd%collect_sen(loc_sen_vsRc, loc_sen_vpRc, loc_sen_rhoRc,&
+                         this%sen_vsRc, this%sen_vpRc, this%sen_rhoRc)
     call synchronize_all()
   end subroutine depthkernel
 

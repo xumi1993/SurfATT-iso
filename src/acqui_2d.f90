@@ -129,8 +129,7 @@ module acqui_2d
     nz = size(zgrids)
     vs1d = linspace(ap%inversion%vel_range(1), ap%inversion%vel_range(2), nz)
     svel = zeros(this%sr%nperiod)
-    call fwdsurf1d(vs1d,nz,ap%data%iwave,ap%data%igr,&
-                   this%sr%nperiod,&
+    call fwdsurf1d(vs1d,ap%data%iwave,ap%data%igr,&
                    this%sr%periods,zgrids,svel)
     do i = 1, this%ag%nx
       do j = 1, this%ag%ny

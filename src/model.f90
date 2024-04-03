@@ -16,6 +16,7 @@ module model
   use my_mpi
   use para, ap => att_para_global
   use src_rec, staall => stations_global, sr_ph=>src_rec_global_ph, sr_gr=>src_rec_global_gr
+  use decomposer, amd => att_mesh_decomposer_global
   use utils
   use h5fortran
   use stdlib_math, only: arange, linspace
@@ -79,6 +80,7 @@ module model
     enddo
     call scatter_all_i(this%n_xyz(1)*this%n_xyz(2),&
                        mysize, myrank,this%grid_istart,this%grid_iend)
+    call amd%init(this%n_xyz(1), this%n_xyz(2))
     call synchronize_all()
 
   end subroutine initialize_model
@@ -204,9 +206,8 @@ module model
         ! call fwdsurf1d(real(vsinv),this%n_xyz(3),ap%data%iwave,&
         !               ap%data%igr,sr%nperiod,&
         !               sr%periods,real(this%zgrids),this%d_xyz(3),tmp)
-        call fwdsurf1d(vsinv,this%n_xyz(3),ap%data%iwave,&
-                          ap%data%igr,sr%nperiod,&
-                          sr%periods,this%zgrids,tmp)
+        call fwdsurf1d(vsinv,ap%data%iwave,ap%data%igr,&
+                       sr%periods,this%zgrids,tmp)
         chi = 0.5*sum((sr%meanvel-tmp)**2)
         misfits(iter) = misfits(iter) + chi
         call depthkernel1d(vsinv,this%n_xyz(3),ap%data%iwave,&

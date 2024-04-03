@@ -14,9 +14,10 @@ module grid
   use para, ap => att_para_global
   use src_rec, sr_gr => src_rec_global_gr, sr_ph => src_rec_global_ph
   use model, am => att_model_global
+  use decomposer, amd => att_mesh_decomposer_global
   use topo
   use utils
-  use surfker, only: fwdsurf3d_mpi
+  use surfker, only: fwdsurf3d_mpi, fwdsurf3d_decomp
   use stdlib_io_npy, only: save_npy
   use setup_att_log
 
@@ -102,9 +103,9 @@ module grid
       call write_log("Reading topography file",1, this%module)
       allocate(tmp(this%nperiod))
       call scatter_all_i(this%nperiod, mysize, myrank, istart, iend)
-      call fwdsurf1d(am%vs1d,am%n_xyz(3),ap%data%iwave,&
-                  igr,this%nperiod,this%periods,&
-                  am%zgrids,tmp)
+      call fwdsurf1d(am%vs1d,ap%data%iwave,&
+                     igr,this%periods,&
+                     am%zgrids,tmp)
       call at%read(ap%topo%topo_file)
       call at%grid_topo(am%xgrids, am%ygrids)
       do ip = istart, iend
@@ -138,11 +139,18 @@ module grid
   subroutine fwdsurf(this, vs3d)
     class(att_grid), intent(inout) :: this
     real(kind=dp), dimension(:,:,:), intent(in) :: vs3d
+    real(kind=dp), dimension(:,:,:), allocatable :: tmpvel
     ! calculate surfave wave velocity
-    call fwdsurf3d_mpi(vs3d,am%igrid,am%grid_istart,am%grid_iend,&
-                       ap%data%iwave,this%igr,this%periods,am%zgrids,this%svel)
- 
+    ! call fwdsurf3d_mpi(vs3d,am%igrid,am%grid_istart,am%grid_iend,&
+                      !  ap%data%iwave,this%igr,this%periods,am%zgrids,this%svel)
+
+    call fwdsurf3d_decomp(vs3d,amd%loc_ix_start,amd%loc_ix_end,amd%loc_iy_start,amd%loc_iy_end,&
+                          ap%data%iwave,this%igr,this%periods,am%zgrids,tmpvel) 
     call synchronize_all()
+    ! print *, myrank, maxval(tmpvel), minval(tmpvel)
+    call amd%collect_grid(tmpvel, this%svel)
+    call synchronize_all()
+    if (myrank == 0) call save_npy("svel.npy", this%svel)
     
   end subroutine fwdsurf
 end module
