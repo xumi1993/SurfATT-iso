@@ -426,7 +426,7 @@ end function
 
     allocate(linspace_r8r8(n))
     step = ( last - first ) / ( n-1 )
-    linspace_r8r8 = first + step * real([ ( i-1, i = 1, n ) ], RPRE)
+    linspace_r8r8 = first + step * real([ ( i-1, i = 1, n ) ], DPRE)
     return
   end function linspace_r8r8
 
