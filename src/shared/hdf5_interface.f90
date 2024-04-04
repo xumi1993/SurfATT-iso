@@ -134,6 +134,7 @@ contains
           endselect
       case('new','replace')
         call h5fcreate_f(filename,H5F_ACC_TRUNC_F,self%lid,ierr)
+        if (ierr /= 0) error stop 'Error: Unable to create HDF5 file: '//filename
       case default
         error stop 'Error: Unsupported status ->'// lstatus
     endselect
@@ -147,13 +148,14 @@ contains
     integer :: ierr
 
     !> close hdf5 file
+    ! print *, self%lid
     call h5fclose_f(self%lid, ierr)
     if(ierr /=0) error stop "Unable to close HDF5 file: "//self%filename
 
     !>  Close FORTRAN interface.
     if(present(finalize) .and. finalize) call h5close_f(ierr)
     if(ierr /=0) error stop "Unable to close HDF5 fortran interface!"
-    ! this%is_init = .FALSE.
+    ! self%is_init = .FALSE.
 
   end subroutine hdf_close_file
   !=============================================================================

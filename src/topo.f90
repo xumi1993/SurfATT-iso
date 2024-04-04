@@ -60,7 +60,7 @@ module topo
     character(len=MAX_STRING_LEN) :: fname
     type(hdf5_file) :: h
     
-    call h%open(fname, status='old')
+    call h%open(fname, status='old', action='r')
     call h%get('/lon', this%lon)
     call h%get('/lat', this%lat)
     call h%get('/z', this%z)
@@ -156,11 +156,8 @@ module topo
     class(att_topo), intent(inout) :: this
     character(len=MAX_STRING_LEN) :: fname
     type(hdf5_file) :: h
-    integer :: stat
 
-    open(unit=IOUT, iostat=stat, file=fname, status='old')
-    if (stat == 0) close(IOUT, status='delete')
-    call h%open(fname, status='new', action='w')
+    call h%open(fname, status='replace')
     call h%add('/lon', this%lon)
     call h%add('/lat', this%lat)
     call h%add('/z', this%z)
