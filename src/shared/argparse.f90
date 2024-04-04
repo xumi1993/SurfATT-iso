@@ -335,10 +335,15 @@ contains
 
     ! Read numbers from the string
     read(input(1 : slash - 1), *, IOSTAT=ierr) nums(1)
-    if(ierr/=0) stop 'Cannot parse argument '//trim(input)
+    if(ierr/=0) then
+      write(*,*)'Cannot parse argument '//trim(input)
+      stop
+    endif
     read(input(slash + 1 :), *, iostat=ierr) nums(2)
-    if(ierr/=0) stop 'Cannot parse argument '//trim(input)
-    
+    if(ierr/=0) then
+      write(*,*) 'Cannot parse argument '//trim(input)
+      stop 
+    endif
   end subroutine parse_2string_dp
 
   subroutine parse_2string_i(input, nums)
@@ -351,9 +356,15 @@ contains
 
     ! Read numbers from the string
     read(input(1 : slash - 1), *, IOSTAT=ierr) nums(1)
-    if(ierr/=0) stop 'Cannot parse argument '//trim(input)
+    if(ierr/=0) then
+      write(*,*)'Cannot parse argument '//trim(input)
+      stop
+    endif
     read(input(slash + 1 :), *, iostat=ierr) nums(2)
-    if(ierr/=0) stop 'Cannot parse argument '//trim(input)
+    if(ierr/=0) then
+      write(*,*) 'Cannot parse argument '//trim(input)
+      stop
+    endif
     
   end subroutine parse_2string_i
 end module argparse

@@ -130,13 +130,18 @@ contains
               call h5fcreate_f(filename, H5F_ACC_TRUNC_F,self%lid,ierr)
             endif
           case default
-            error stop 'Error: Unsupported action ->'// laction
+            write(*,*)'Error: Unsupported action ->'// laction
+            error stop 
           endselect
       case('new','replace')
         call h5fcreate_f(filename,H5F_ACC_TRUNC_F,self%lid,ierr)
-        if (ierr /= 0) error stop 'Error: Unable to create HDF5 file: '//filename
+        if (ierr /= 0) then
+          write(*,*)'Error: Unable to create HDF5 file: '//filename
+          error stop 
+        endif
       case default
-        error stop 'Error: Unsupported status ->'// lstatus
+        write(*,*)'Error: Unsupported status ->'// lstatus
+        error stop 
     endselect
 
   end subroutine hdf_open_file
@@ -150,11 +155,17 @@ contains
     !> close hdf5 file
     ! print *, self%lid
     call h5fclose_f(self%lid, ierr)
-    if(ierr /=0) error stop "Unable to close HDF5 file: "//self%filename
+    if(ierr /=0) then
+      write(*,*) "Unable to close HDF5 file: "//self%filename
+      error stop 
+    endif
 
     !>  Close FORTRAN interface.
     if(present(finalize) .and. finalize) call h5close_f(ierr)
-    if(ierr /=0) error stop "Unable to close HDF5 fortran interface!"
+    if(ierr /=0) then
+      write(*,*) "Unable to close HDF5 fortran interface!"
+      error stop
+    endif
     ! self%is_init = .FALSE.
 
   end subroutine hdf_close_file
