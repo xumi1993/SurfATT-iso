@@ -164,8 +164,8 @@ contains
     enddo
     ! write final model
     call am%write('final_model')
+    if (myrank == 0) call h%close(finalize=.true.)
     close(OID)
-    call h%close()
     call write_log('Inversion is done.',1,this%module)
   end subroutine do_inversion
 

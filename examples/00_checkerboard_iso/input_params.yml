@@ -37,7 +37,7 @@ inversion:
   ncomponents: 5 # number of multiple grid
   n_inv_grid: [8,9,8]
   # ------- Inversion parameters --------
-  niter: 40 # max iterations
+  niter: 1 # max iterations
   min_derr: 0.0015 # minimum error change
   # ------- optimization parameters -------
   optim_method: 0 # 0: SD; 1: Halving step
