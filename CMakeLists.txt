@@ -25,7 +25,6 @@ message(STATUS "MPI_VERSION: ${MPI_VERSION}")
 
 find_package(HDF5 REQUIRED COMPONENTS Fortran HL)
 include_directories(${HDF5_INCLUDE_DIRS} ${HDF5_HL_INCLUDE_DIR})
-# include_directories(SYSTEM ${HDF5_INCLUDE_DIRS} ${HDF5_HL_INCLUDE_DIR})
 message(STATUS "HDF5_FOUND: ${HDF5_FOUND}")
 message(STATUS "HDF5_VERSION: ${HDF5_VERSION}")
 
