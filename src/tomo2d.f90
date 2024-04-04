@@ -53,7 +53,7 @@ contains
         call write_log(errmsg, 3, this%module)
         call exit_MPI(myrank, errmsg)
       endif
-      call initialize_files()
+      ! call initialize_files()
     endif
     call synchronize_all()
   end subroutine init_tomo_2d
@@ -121,9 +121,11 @@ contains
         call acqui%sr%to_csv(trim(fname))
         ! optimization
         call this%optimize()
+        call acqui%write_iter()
       enddo
       ! write final model
       call acqui%write_model()
+      call acqui%h%close()
     enddo
   end subroutine do_inversion
 
@@ -132,6 +134,7 @@ contains
     if (myrank == 0) then 
       open(IOUT, file=trim(ap%output%output_path)//'/objective_function_'//&
            trim(ap%data%gr_name(itype))//'.csv', status='replace',action='write')
+      call acqui%h%open(acqui%model_fname, status='new', action='write')    
     endif
     acqui%updatemax = ap%inversion%step_length
     call acqui%write_iter()

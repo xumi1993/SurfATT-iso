@@ -17,7 +17,7 @@ module tomo
   use decomposer, amd => att_mesh_decomposer_global
   use measadj
   use utils
-  use h5fortran
+  use hdf5_interface
   use surfker, only: depthkernel_mpi
   use setup_att_log
 
@@ -26,6 +26,7 @@ module tomo
   integer, private :: iter, itype, OID
   real(kind=dp), private :: updatemax
   character(len=MAX_STRING_LEN) :: model_fname
+  type(hdf5_file) :: h
 
   type, public ::  att_tomo
     integer, dimension(:,:), allocatable                   :: isrcs
@@ -64,7 +65,7 @@ contains
         call exit_MPI(myrank, errmsg)
       endif
       model_fname = trim(ap%output%output_path)//"/"//modfile
-      call initialize_files()
+      ! call initialize_files()
     endif
     do itype = 1, 2
       if(.not. ap%data%vel_type(itype)) cycle
@@ -83,16 +84,17 @@ contains
     if (myrank == 0) then 
       open(OID, file=trim(ap%output%output_path)//'/objective_function.csv',&
           status='replace',action='write')
+      call h%open(model_fname, status='new', action='w')
       do itype = 1, 2
         if (.not. ap%data%vel_type(itype)) cycle
         call select_type()
-        call h5write(model_fname, '/stx_'//trim(ap%data%gr_name(itype)), aq%sr%stations%stx)
-        call h5write(model_fname, '/sty_'//trim(ap%data%gr_name(itype)), aq%sr%stations%sty)
+        call h%add('/stx_'//trim(ap%data%gr_name(itype)), aq%sr%stations%stx)
+        call h%add('/sty_'//trim(ap%data%gr_name(itype)), aq%sr%stations%sty)
       enddo
-      call h5write(model_fname, '/x', am%xgrids)
-      call h5write(model_fname, '/y', am%ygrids)
-      call h5write(model_fname, '/z', am%zgrids)
-      call h5write(model_fname, '/vs_000', am%vs3d)
+      call h%add('/x', am%xgrids)
+      call h%add('/y', am%ygrids)
+      call h%add('/z', am%zgrids)
+      call h%add('/vs_000', am%vs3d)
     endif
     if (ap%output%is_save_initial_model) call am%write('initial_model')
     call synchronize_all()
@@ -163,6 +165,7 @@ contains
     ! write final model
     call am%write('final_model')
     close(OID)
+    call h%close()
     call write_log('Inversion is done.',1,this%module)
   end subroutine do_inversion
 
@@ -279,7 +282,7 @@ contains
     character(len=MAX_STRING_LEN) :: secname
 
     write(secname,'(a,i3.3)') '/vs_',iter  
-    call h5write(model_fname, secname, am%vs3d)
+    call h%add(secname, am%vs3d)
 
   end subroutine write_tmp_model
 

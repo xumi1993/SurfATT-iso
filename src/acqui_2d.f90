@@ -1,9 +1,12 @@
 module acqui_2d
   use utils
   use para
+  use hdf5_interface
   use grid, ag_ph => att_grid_global_ph, ag_gr => att_grid_global_gr
   use src_rec, sr_ph => src_rec_global_ph, sr_gr => src_rec_global_gr
   ! use stdlib_math, only: linspace
+  
+  implicit none
 
   type, public :: att_acqui_2d
     real(kind=dp), dimension(:,:,:), pointer               :: svel, adj_s, &
@@ -16,6 +19,7 @@ module acqui_2d
     real(kind=dp)                                          :: updatemax, chi0
     real(kind=dp), dimension(:), pointer                   :: misfits
     integer, dimension(:,:), allocatable                   :: isrcs
+    type(hdf5_file)                                        :: h
     contains
     procedure :: init => att_acqui_2d_init, add_pert => att_acqui_2d_add_pert, &
                  write_model => att_acqui_2d_write_model, write_iter => att_acqui_2d_write_iter, &
@@ -27,7 +31,6 @@ module acqui_2d
   type(att_acqui_2d), target                               :: acqui_ph, acqui_gr
   integer :: win_adj_s, win_misfit, win_svel_acqui, win_xi, win_eta
   character(len=MAX_STRING_LEN), private                   :: message
-
 
   contains
 
@@ -54,6 +57,7 @@ module acqui_2d
   subroutine scatter_src_gather(this)
     class(att_acqui_2d), intent(inout) :: this
     integer, dimension(:,:), allocatable :: isrcs
+    integer :: i, j
 
     isrcs = zeros(this%sr%npath, 2)
     this%nsrc = 0
@@ -79,7 +83,7 @@ module acqui_2d
     real(kind=dp), intent(in), optional :: pert_vel,hmarg
     real(kind=dp) :: ashmarg,aspert_vel,amp
     real(kind=dp), dimension(:), allocatable :: x_pert, y_pert
-    integer :: i, j, ntaperx, ntapery
+    integer :: i, j, k, ntaperx, ntapery
 
     if (present(pert_vel)) then 
       aspert_vel = pert_vel 
@@ -123,7 +127,7 @@ module acqui_2d
   subroutine construct_1d_ref_model(this)
     class(att_acqui_2d), intent(inout) :: this
     real(kind=dp), dimension(:), allocatable :: zgrids, vs1d,svel
-    integer :: i, nz
+    integer :: i, j, nz
 
     zgrids = arange(ap%domain%depth(1),ap%domain%depth(2),ap%domain%interval(3))
     nz = size(zgrids)
@@ -182,16 +186,16 @@ module acqui_2d
     character(MAX_NAME_LEN) :: gr_name, secname
 
     if (myrank == 0) then
-      gr_name = trim(ap%data%gr_name(itype))
+      gr_name = trim(ap%data%gr_name(this%itype))
       if(this%iter == 0) then
-        call h5write(this%model_fname, '/stx_'//trim(gr_name), this%sr%stations%stx)
-        call h5write(this%model_fname, '/sty_'//trim(gr_name), this%sr%stations%sty)
-        call h5write(this%model_fname, '/periods_'//trim(gr_name), this%ag%periods)
-        call h5write(this%model_fname, '/x', this%ag%xgrids)
-        call h5write(this%model_fname, '/y', this%ag%ygrids)
+        call this%h%add('/stx_'//trim(gr_name), this%sr%stations%stx)
+        call this%h%add('/sty_'//trim(gr_name), this%sr%stations%sty)
+        call this%h%add('/periods_'//trim(gr_name), this%ag%periods)
+        call this%h%add('/x', this%ag%xgrids)
+        call this%h%add('/y', this%ag%ygrids)
       endif
       write(secname,'(a,i3.3)') '/vel_'//trim(gr_name)//'_',this%iter 
-      call h5write(this%model_fname, secname, this%svel)
+      call this%h%add(secname, this%svel)
     endif
     call synchronize_all()
   end subroutine att_acqui_2d_write_iter
@@ -199,14 +203,18 @@ module acqui_2d
   subroutine att_acqui_2d_write_model(this)
     class(att_acqui_2d), intent(inout) :: this
     character(MAX_NAME_LEN) :: gr_name, secname
+    type(hdf5_file) :: hf
 
     if (myrank == 0) then
-      call h5write(this%final_fname, '/stx_'//trim(this%gr_name), this%sr%stations%stx)
-      call h5write(this%final_fname, '/sty_'//trim(this%gr_name), this%sr%stations%sty)
-      call h5write(this%final_fname, '/periods_'//trim(this%gr_name), this%ag%periods)
-      call h5write(this%final_fname, '/x', this%ag%xgrids)
-      call h5write(this%final_fname, '/y', this%ag%ygrids)
-      call h5write(this%final_fname, '/vel_'//trim(this%gr_name), this%svel)
+      call hf%open(this%final_fname, status='new', action='write')
+
+      call hf%add('/stx_'//trim(this%gr_name), this%sr%stations%stx)
+      call hf%add('/sty_'//trim(this%gr_name), this%sr%stations%sty)
+      call hf%add('/periods_'//trim(this%gr_name), this%ag%periods)
+      call hf%add('/x', this%ag%xgrids)
+      call hf%add('/y', this%ag%ygrids)
+      call hf%add('/vel_'//trim(this%gr_name), this%svel)
+      call hf%close()
     endif
     call synchronize_all()
   end subroutine att_acqui_2d_write_model

@@ -25,6 +25,8 @@ message(STATUS "MPI_VERSION: ${MPI_VERSION}")
 
 find_package(HDF5 COMPONENTS HL REQUIRED)
 include_directories(SYSTEM ${HDF5_INCLUDE_DIRS} ${HDF5_HL_INCLUDE_DIR})
+message(STATUS "HDF5_FOUND: ${HDF5_FOUND}")
+message(STATUS "HDF5_VERSION: ${HDF5_VERSION}")
 
 # add sub modules
 add_subdirectory("${PROJECT_SOURCE_DIR}/external_libs")
@@ -64,8 +66,6 @@ foreach(execsourcefile ${APP_SOURCES})
   target_link_libraries(${EXEC_NAME} PUBLIC fortran-csv)
   
   # link h5fortran
-  target_link_libraries(${EXEC_NAME} PUBLIC h5fortran)
-
   target_link_libraries(${EXEC_NAME} PUBLIC ${HDF5_LIBRARIES} ${HDF5_HL_LIBRARIES})
 
   # link surfatt_modules

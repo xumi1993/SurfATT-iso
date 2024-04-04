@@ -10,4 +10,4 @@ cp src_rec_file_gr.csv OUTPUT_FILES/src_rec_file_forward_gr.csv
 mpirun --oversubscribe -np $NPROC ../../bin/surfatt_cb_fwd -i input_params.yml -n 2/3/2 -m 0.2 -p 0.08
 
 # inversion 
-mpirun --oversubscribe -np $NPROC ../../bin/surfatt_tomo -i input_params.yml
+# mpirun --oversubscribe -np $NPROC ../../bin/surfatt_tomo -i input_params.yml

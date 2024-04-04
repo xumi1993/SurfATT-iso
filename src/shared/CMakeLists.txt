@@ -6,5 +6,5 @@ include_directories(
   ${PROJECT_SOURCE_DIR}/include
 )
 add_library(shared_obj OBJECT ${SHARED_SOURCES})
-target_link_libraries(shared_obj PRIVATE MPI::MPI_Fortran fortran-csv)
+target_link_libraries(shared_obj PRIVATE MPI::MPI_Fortran fortran-csv ${HDF5_LIBRARIES} ${HDF5_HL_LIBRARIES} )
 # target_link_libraries(fortran-yaml)

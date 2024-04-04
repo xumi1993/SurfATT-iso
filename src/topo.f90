@@ -160,7 +160,7 @@ module topo
 
     open(unit=IOUT, iostat=stat, file=fname, status='old')
     if (stat == 0) close(IOUT, status='delete')
-    call h%open(fname, action='w')
+    call h%open(fname, status='new', action='w')
     call h%add('/lon', this%lon)
     call h%add('/lat', this%lat)
     call h%add('/z', this%z)

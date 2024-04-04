@@ -5,6 +5,16 @@ module hdf5_interface
 
   public :: hdf5_file
 
+  interface h5read
+    module procedure h5read_f_1d, h5read_f_2d, h5read_f_3d
+  end interface h5read
+  public :: h5read
+
+  interface h5write
+    module procedure h5write_f_1d, h5write_f_2d, h5write_f_3d
+  end interface h5write
+  public :: h5write
+
   private
   
   integer, parameter :: dp = 8
@@ -92,6 +102,7 @@ contains
 
     character(:), allocatable :: lstatus, laction
     integer :: ierr
+    logical :: is_hdf5
 
     !> Initialize FORTRAN interface.
     if(.not.self%is_init) call h5open_f(ierr)
@@ -99,6 +110,7 @@ contains
     self%is_init = .TRUE.
 
     self%filename = filename
+    inquire(file=filename, exist=is_hdf5)
 
     lstatus = 'old'
     if(present(status)) lstatus = to_lower(status)
@@ -112,7 +124,11 @@ contains
           case('read','r')  !> Open an existing file.
             call h5fopen_f(filename,H5F_ACC_RDONLY_F,self%lid,ierr)
           case('write','readwrite','w','rw')
-            call h5fopen_f(filename,H5F_ACC_RDWR_F,self%lid,ierr)
+            if (is_hdf5) then
+              call h5fopen_f(filename,H5F_ACC_RDWR_F,self%lid,ierr)
+            else
+              call h5fcreate_f(filename, H5F_ACC_TRUNC_F,self%lid,ierr)
+            endif
           case default
             error stop 'Error: Unsupported action ->'// laction
           endselect
@@ -329,7 +345,7 @@ contains
   subroutine hdf_add_real1d(self,dname,value)
     class(hdf5_file), intent(in) :: self
     character(*), intent(in) :: dname
-    real(kind=dp), intent(in)      :: value(:)
+    real(kind=dp), intent(in) :: value(:)
 
     integer         :: ierr
 
@@ -536,7 +552,7 @@ contains
 
     class(hdf5_file), intent(in)     :: self
     character(*), intent(in)         :: dname
-    real, intent(out),allocatable :: value(:,:,:)
+    real(kind=dp), intent(out),allocatable :: value(:,:,:)
 
     integer(HSIZE_T) :: dims(3)
     integer(SIZE_T)  :: dsize
@@ -569,5 +585,90 @@ contains
     end do
 
   end function to_lower
+  !=============================================================================
+
+  subroutine h5read_f_1d(fname, dname, value)
+    character(*), intent(in) :: fname
+    character(*), intent(in) :: dname
+    real(kind=dp), allocatable, intent(out) :: value(:)
+
+    type(hdf5_file) :: hdf
+    integer :: ierr
+
+    call hdf%open(fname)
+    call hdf%get(dname, value)
+    call hdf%close()
+    
+  end subroutine h5read_f_1d
+
+  subroutine h5read_f_2d(fname, dname, value)
+    character(*), intent(in) :: fname
+    character(*), intent(in) :: dname
+    real(kind=dp), allocatable, intent(out) :: value(:,:)
+
+    type(hdf5_file) :: hdf
+    integer :: ierr
+
+    call hdf%open(fname)
+    call hdf%get(dname, value)
+    call hdf%close()
+    
+  end subroutine h5read_f_2d
+
+  subroutine h5read_f_3d(fname, dname, value)
+    character(*), intent(in) :: fname
+    character(*), intent(in) :: dname
+    real(kind=dp), allocatable, intent(out) :: value(:,:,:)
+
+    type(hdf5_file) :: hdf
+    integer :: ierr
+
+    call hdf%open(fname)
+    call hdf%get(dname, value)
+    call hdf%close()
+    
+  end subroutine h5read_f_3d
+
+  subroutine h5write_f_1d(fname, dname, value)
+    character(*), intent(in) :: fname
+    character(*), intent(in) :: dname
+    real(kind=dp), intent(in) :: value(:)
+
+    type(hdf5_file) :: hdf
+    integer :: ierr
+
+    call hdf%open(fname)
+    call hdf%add(dname, value)
+    call hdf%close()
+    
+  end subroutine h5write_f_1d
+
+  subroutine h5write_f_2d(fname, dname, value)
+    character(*), intent(in) :: fname
+    character(*), intent(in) :: dname
+    real(kind=dp), intent(in) :: value(:,:)
+
+    type(hdf5_file) :: hdf
+    integer :: ierr
+
+    call hdf%open(fname)
+    call hdf%add(dname, value)
+    call hdf%close()
+    
+  end subroutine h5write_f_2d
+
+  subroutine h5write_f_3d(fname, dname, value)
+    character(*), intent(in) :: fname
+    character(*), intent(in) :: dname
+    real(kind=dp), intent(in) :: value(:,:,:)
+
+    type(hdf5_file) :: hdf
+    integer :: ierr
+
+    call hdf%open(fname)
+    call hdf%add(dname, value)
+    call hdf%close()
+    
+  end subroutine h5write_f_3d
 
 end module hdf5_interface

@@ -18,7 +18,7 @@ module model
   use src_rec, staall => stations_global, sr_ph=>src_rec_global_ph, sr_gr=>src_rec_global_gr
   use decomposer, amd => att_mesh_decomposer_global
   use utils
-  use h5fortran
+  use hdf5_interface
   ! use stdlib_math, only: arange, linspace
   ! use stdlib_io_npy, only: load_npy
   ! use stdlib_io, only: savetxt
@@ -300,15 +300,18 @@ module model
     real(kind=dp),dimension(:,:), allocatable :: xyzdat 
     character(len=*), intent(in) :: subname
     character(len=MAX_STRING_LEN) :: fname
+    type(hdf5_file) :: h
     integer :: i
     
     if (myrank == 0) then
       fname = trim(ap%output%output_path)//&
                     '/'//trim(subname)//'.h5'
-      call h5write(fname,'/x',this%xgrids)
-      call h5write(fname,'/y',this%ygrids)
-      call h5write(fname,'/z',this%zgrids)
-      call h5write(fname,'/vs',this%vs3d)
+      call h%open(fname, status='new', action='write')
+      call h%add('/x',this%xgrids)
+      call h%add('/y',this%ygrids)
+      call h%add('/z',this%zgrids)
+      call h%add('/vs',this%vs3d)
+      call h%close()
     endif
     call synchronize_all()    
   end subroutine write_model
