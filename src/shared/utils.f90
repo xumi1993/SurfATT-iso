@@ -15,7 +15,7 @@ module utils
   implicit none
 
   integer, public, parameter :: IPRE = 4
-  integer, public, parameter :: RPRE = cr
+  integer, public, parameter :: RPRE = dp
   integer, public, parameter :: DPRE = dp
 
   interface zeros

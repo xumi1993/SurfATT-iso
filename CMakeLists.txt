@@ -51,7 +51,6 @@ foreach(execsourcefile ${APP_SOURCES})
   get_filename_component(EXEC_NAME ${execsourcefile} NAME_WE)
 
   # add executable
-  message( ${execsourcefile})
   add_executable(${EXEC_NAME} ${execsourcefile})
 
   # link MPI

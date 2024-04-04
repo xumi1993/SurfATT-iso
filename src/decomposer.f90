@@ -1,6 +1,7 @@
 module decomposer
 
   use shared_par
+  use utils
   use para, ap => att_para_global
 
   implicit none
@@ -39,6 +40,10 @@ contains
 
     allocate(this%glob_ix(mysize, 2))
     allocate(this%glob_iy(mysize, 2))
+    this%glob_ix = 0
+    this%glob_iy = 0
+    loc_ix = 0
+    loc_iy = 0
     this%loc_ix_start = 1 + (mod(myrank, this%glob_px)) * (nx / this%glob_px)
     this%loc_ix_end = this%loc_ix_start + (nx / this%glob_px) - 1
     this%loc_iy_start = 1 + myrank / this%glob_px * (ny / this%glob_py)
@@ -65,6 +70,7 @@ contains
     this%loc_ny = this%loc_iy_end - this%loc_iy_start + 1
     call sum_all_1Darray_i(loc_ix, this%glob_ix, mysize*2)
     call sum_all_1Darray_i(loc_iy, this%glob_iy, mysize*2)
+    ! if (myrank == 0) print *, this%glob_ix, this%glob_iy
 
   end subroutine init_decomposer
 

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-NPROC=10
+NPROC=8
 
 mkdir -p OUTPUT_FILES
 cp src_rec_file_ph.csv OUTPUT_FILES/src_rec_file_forward_ph.csv
