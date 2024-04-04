@@ -68,4 +68,7 @@ foreach(execsourcefile ${APP_SOURCES})
   # link surfatt_modules
   target_link_libraries(${EXEC_NAME} PUBLIC shared_obj surfker_obj surfatt_modules)
 
+  # set linker language
+  set_target_properties(${EXEC_NAME} PROPERTIES LINKER_LANGUAGE Fortran)
+
 endforeach()
