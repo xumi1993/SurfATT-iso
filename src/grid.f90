@@ -17,7 +17,7 @@ module grid
   use decomposer, amd => att_mesh_decomposer_global
   use topo
   use utils
-  use surfker, only: fwdsurf3d_mpi, fwdsurf3d_decomp
+  use surfker, only: fwdsurf3d_decomp
   use setup_att_log
 
   implicit none
@@ -144,8 +144,6 @@ module grid
     real(kind=dp), dimension(:,:,:), intent(in) :: vs3d
     real(kind=dp), dimension(:,:,:), allocatable :: tmpvel
     ! calculate surfave wave velocity
-    ! call fwdsurf3d_mpi(vs3d,am%igrid,am%grid_istart,am%grid_iend,&
-                      !  ap%data%iwave,this%igr,this%periods,am%zgrids,this%svel)
 
     call fwdsurf3d_decomp(vs3d,amd%loc_ix_start,amd%loc_ix_end,amd%loc_iy_start,amd%loc_iy_end,&
                           ap%data%iwave,this%igr,this%periods,am%zgrids,tmpvel) 

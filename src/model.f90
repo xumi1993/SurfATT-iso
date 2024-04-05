@@ -19,9 +19,6 @@ module model
   use decomposer, amd => att_mesh_decomposer_global
   use utils
   use hdf5_interface
-  ! use stdlib_math, only: arange, linspace
-  ! use stdlib_io_npy, only: load_npy
-  ! use stdlib_io, only: savetxt
   use surfker, only: fwdsurf1d, depthkernel1d
   use setup_att_log
   implicit none
@@ -191,9 +188,6 @@ module model
         sen_vp = zeros(sr%nperiod,this%n_xyz(3))
         sen_rho = zeros(sr%nperiod,this%n_xyz(3))
         tmp = zeros(sr%nperiod)
-        ! call fwdsurf1d(real(vsinv),this%n_xyz(3),ap%data%iwave,&
-        !               ap%data%igr,sr%nperiod,&
-        !               sr%periods,real(this%zgrids),this%d_xyz(3),tmp)
         call fwdsurf1d(vsinv,ap%data%iwave,ap%data%igr,&
                        sr%periods,this%zgrids,tmp)
         chi = 0.5*sum((sr%meanvel-tmp)**2)
@@ -210,7 +204,6 @@ module model
         enddo
         update = update / sr%nperiod
         update_total = update_total + update*ap%data%weights(itype)
-        deallocate(sen_vs, sen_vp, sen_rho, tmp)
       enddo
       write(msg,'(a,i0,a,f8.4)') 'Iteration ', iter, ' misfit: ', misfits(iter)
       call write_log(msg,0,this%module)

@@ -70,7 +70,6 @@ contains
     this%loc_ny = this%loc_iy_end - this%loc_iy_start + 1
     call sum_all_1Darray_i(loc_ix, this%glob_ix, mysize*2)
     call sum_all_1Darray_i(loc_iy, this%glob_iy, mysize*2)
-    ! if (myrank == 0) print *, this%glob_ix, this%glob_iy
 
   end subroutine init_decomposer
 
