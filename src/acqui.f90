@@ -135,7 +135,7 @@ contains
     real(kind=dp), dimension(:), allocatable :: local_tt
     real(kind=dp), dimension(:,:), allocatable :: adj, kden
     character(len=MAX_STRING_LEN) :: fname
-    integer :: iz,i
+    integer :: iz,i, pidx, stidx
 
     if (present(verbose)) then
       verbose_local = verbose
@@ -153,29 +153,30 @@ contains
                             trim(this%gr_name)//'...',1,this%module)
     if ((this%iend-this%istart)>=0) then
       do i = this%istart, this%iend
+        pidx = this%isrcs(i,1); stidx = this%isrcs(i,2)
         write(this%message, '(i0,a,F0.4,a,a)') myrank,' period: ',&
-              this%sr%periods(this%isrcs(i,1)),' src_name: ',&
-              this%sr%stations%staname(this%isrcs(i, 2))
+              this%sr%periods(pidx),' src_name: ',&
+              this%sr%stations%staname(stidx)
         if (verbose_local) call write_log(this%message,0,this%module)
         ! get receivers for this source
-        call ma%get_recs(this%sr,this%isrcs(i,1),this%sr%stations%staname(this%isrcs(i, 2)))
+        call ma%get_recs(this%sr,pidx,this%sr%stations%staname(stidx))
         ! forward simulation
-        call ma%run_forward(this%ag%svel(this%isrcs(i,1),:,:), this%ag%m11(this%isrcs(i, 1),:,:),&
-                            this%ag%m22(this%isrcs(i,1),:,:), this%ag%m12(this%isrcs(i,1),:,:),&
-                            this%ag%ref_t(this%isrcs(i,1),:,:))
+        call ma%run_forward(this%ag%svel(pidx,:,:), this%ag%m11(pidx,:,:),&
+                            this%ag%m22(pidx,:,:), this%ag%m12(pidx,:,:),&
+                            this%ag%ref_t(pidx,:,:))
         ! sum chi
         chi_local = chi_local + ma%chi
         ! save synthetic tt to table
         if (istotable) call ma%to_table(local_tt)
         if (isadj) then
           ! measure adjoint
-          call ma%run_adjoint(this%ag%m11(this%isrcs(i, 1),:,:),this%ag%m22(this%isrcs(i,1),:,:),&
-                              this%ag%m12(this%isrcs(i,1),:,:),adj)
+          call ma%run_adjoint(this%ag%m11(pidx,:,:),this%ag%m22(pidx,:,:),&
+                              this%ag%m12(pidx,:,:),adj)
           ! kernel density
-          call ma%run_adjoint_density(this%ag%m11(this%isrcs(i, 1),:,:), this%ag%m22(this%isrcs(i,1),:,:),&
-                                      this%ag%m12(this%isrcs(i,1),:,:),kden)
+          call ma%run_adjoint_density(this%ag%m11(pidx,:,:), this%ag%m22(pidx,:,:),&
+                                      this%ag%m12(pidx,:,:),kden)
           ! post proc of eikonal kernel
-          call this%post_proc_eikokernel(this%isrcs(i,1), adj, ma%timetable)
+          call this%post_proc_eikokernel(pidx, adj, ma%timetable)
         endif
         ! distribute measadj
         call ma%distory()
@@ -312,12 +313,11 @@ contains
     real(kind=dp), dimension(:,:),allocatable :: Tx, Ty
     ! real(kind=dp), dimension(:,:,:,:), allocatable :: adj_s_local, adj_xi_local, adj_eta_local
     real(kind=dp),  dimension(:,:), intent(in) :: adjtable, kden
-    real(kind=dp), dimension(am%n_xyz(1), am%n_xyz(2)) :: vtmp, lat_corr
+    ! real(kind=dp), dimension(am%n_xyz(1), am%n_xyz(2)) :: vtmp
     integer :: i, j, k
 
-    vtmp = 1/this%ag%svel(pidx, :,:)
-        do i = 1, am%n_xyz(3)
-      this%adj_s_local(pidx, :,:,i) = this%adj_s_local(pidx, :,:,i)+adjtable * vtmp**3
+    do i = 1, am%n_xyz(3)
+      this%adj_s_local(pidx, :,:,i) = this%adj_s_local(pidx, :,:,i)+adjtable / this%ag%svel(pidx, :,:)**3
       this%adj_density_local(pidx, :,:,i) = this%adj_density_local(pidx, :,:,i)+kden
     enddo
   end subroutine post_proc_eikokernel

@@ -792,12 +792,14 @@ subroutine FSM_UW_PS_lonlat_2d(xx_deg,yy_deg,nx,ny,spha,sphb,sphc,T,fun,x0_deg,y
 !f2py   intent(out) :: T
 
     ! ------------------------ convert degree to radian ----------------------
-    do iix=1,nx
-        xx(iix) = xx_deg(iix)/180.0*pi
-    end do
-    do iiy=1,ny
-        yy(iiy) = yy_deg(iiy)/180.0*pi
-    end do
+    ! do iix=1,nx
+    !     xx(iix) = xx_deg(iix)/180.0*pi
+    ! end do
+    ! do iiy=1,ny
+    !     yy(iiy) = yy_deg(iiy)/180.0*pi
+    ! end do
+    xx = xx_deg/180.0*pi
+    yy = yy_deg/180.0*pi
     x0 = x0_deg/180.0*pi
     y0 = y0_deg/180.0*pi
 
@@ -805,12 +807,17 @@ subroutine FSM_UW_PS_lonlat_2d(xx_deg,yy_deg,nx,ny,spha,sphb,sphc,T,fun,x0_deg,y
     dx=xx(2)-xx(1); dy=yy(2)-yy(1);
 
     ! ------------------------ convert a, b, c ----------------------
-    do iix=1,nx
-        do iiy=1,ny
-            a(iix,iiy) = spha(iix,iiy)/(R_earth**2 * cos(yy(iiy))**2)
-            b(iix,iiy) = sphb(iix,iiy)/(R_earth**2)
-            c(iix,iiy) = sphc(iix,iiy)/(R_earth**2 * cos(yy(iiy)))
-        end do
+    ! do iix=1,nx
+    !     do iiy=1,ny
+    !         a(iix,iiy) = spha(iix,iiy)/(R_earth**2 * cos(yy(iiy))**2)
+    !         b(iix,iiy) = sphb(iix,iiy)/(R_earth**2)
+    !         c(iix,iiy) = sphc(iix,iiy)/(R_earth**2 * cos(yy(iiy)))
+    !     end do
+    ! end do
+    do iiy = 1,ny
+        a(:,iiy) = spha(:,iiy)/(R_earth**2 * cos(yy(iiy))**2)
+        b(:,iiy) = sphb(:,iiy)/(R_earth**2)
+        c(:,iiy) = sphc(:,iiy)/(R_earth**2 * cos(yy(iiy)))
     end do
 
     
@@ -894,7 +901,8 @@ subroutine FSM_UW_PS_lonlat_2d(xx_deg,yy_deg,nx,ny,spha,sphb,sphc,T,fun,x0_deg,y
             ! iter 1 x: 1 -> Nx, y: 1 -> Ny
             ! iter 2 x: 1 -> Nx, y: Ny -> 1 
             ! iter 3 x: Nx -> 1, y: 1 -> Ny 
-            ! iter 4 x: Nx -> 1, y: Ny -> 1 
+            ! iter 4 x: Nx -> 1, y: Ny -> 1
+            !DIR$ SIMD
             do iix=x_id1,x_id2,xdirec
                 do iiy=y_id1,y_id2,ydirec
                     if(ischange(iix,iiy)==1) then

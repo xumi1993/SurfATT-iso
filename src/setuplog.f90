@@ -4,23 +4,6 @@ module setup_att_log
   implicit none
 
 contains
-  ! subroutine initialize_files()
-  !   character(len=MAX_STRING_LEN) :: fname
-  !   integer :: stat
-
-  !   fname = trim(ap%output%output_path)//"/"//trim(modfile)
-  !   open(unit=IOUT, iostat=stat, file=fname, status='old')
-  !   if (stat == 0) close(IOUT, status='delete')
-  !   fname = trim(ap%output%output_path)//'/final_model.h5'
-  !   open(unit=IOUT, iostat=stat, file=fname, status='old')
-  !   if (stat == 0) close(IOUT, status='delete')
-  !   fname = trim(ap%output%output_path)//'/initial_model.h5'
-  !   open(unit=IOUT, iostat=stat, file=fname, status='old')
-  !   if (stat == 0) close(IOUT, status='delete')
-  !   fname = trim(ap%output%output_path)//'/target_model.h5'
-  !   open(unit=IOUT, iostat=stat, file=fname, status='old')
-  !   if (stat == 0) close(IOUT, status='delete')
-  ! end subroutine initialize_files
 
   subroutine setuplog()
     integer :: stat

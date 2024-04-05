@@ -39,7 +39,7 @@ module model
     real(kind=dp), dimension(:,:,:), pointer               :: vs3d_opt, vp3d_opt, rho3d_opt
     integer, dimension(:,:), allocatable                   :: igrid
     character(MAX_NAME_LEN), private                       :: module='MODEL'
-    integer                                                :: grid_istart, grid_iend
+    ! integer                                                :: grid_istart, grid_iend
     ! integer, dimension(:), allocatable, public             :: grid_local_index
     contains
     procedure :: init => initialize_model, write => write_model
@@ -68,18 +68,6 @@ module model
     write(msg, '(a,3i4)') 'Model grids: nx,ny,nz: ', this%n_xyz
     call write_log(msg,1,this%module)
     call this%get_inv_grids()
-
-    this%igrid = zeros(this%n_xyz(1)*this%n_xyz(2), 2)
-    n = 1
-    do i = 1, this%n_xyz(1)
-      do j = 1, this%n_xyz(2)
-        this%igrid(n, 1) = i
-        this%igrid(n, 2) = j
-        n = n + 1
-      enddo
-    enddo
-    call scatter_all_i(this%n_xyz(1)*this%n_xyz(2),&
-                       mysize, myrank,this%grid_istart,this%grid_iend)
     call amd%init(this%n_xyz(1), this%n_xyz(2))
     call synchronize_all()
 

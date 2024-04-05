@@ -8,7 +8,7 @@ set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 set(CMAKE_Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/modules)
 
 if ("${CMAKE_Fortran_COMPILER_ID}" MATCHES "GNU")
-  set(MPI_Fortran_COMPILE_FLAGS "-ffixed-line-length-none -fmax-errors=10 -ftree-vectorize -march=native -O3")
+  set(MPI_Fortran_COMPILE_FLAGS "-ffixed-line-length-none -O3")
 elseif ("${CMAKE_Fortran_COMPILER_ID}" MATCHES "Intel")
   set(MPI_Fortran_COMPILE_FLAGS "-132 -xHost -O3")
 endif()

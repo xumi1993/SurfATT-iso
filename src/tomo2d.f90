@@ -148,11 +148,11 @@ contains
     real(kind=dp), dimension(:,:),allocatable :: Tx, Ty
     ! real(kind=dp), dimension(:,:,:,:), allocatable :: adj_s_local, adj_xi_local, adj_eta_local
     real(kind=dp),  dimension(:,:), allocatable, intent(in) :: adjtable, timetable
-    real(kind=dp), dimension(acqui%ag%nx, acqui%ag%ny) :: vtmp, lat_corr
+    ! real(kind=dp), dimension(acqui%ag%nx, acqui%ag%ny) :: vtmp
     integer :: i, j, k
 
-    vtmp = 1/acqui%ag%svel(pidx, :,:)
-    acqui%adj_s(pidx, :,:) = acqui%adj_s(pidx, :,:)+adjtable * vtmp**3
+    ! vtmp = 1/acqui%ag%svel(pidx, :,:)
+    acqui%adj_s(pidx, :,:) = acqui%adj_s(pidx, :,:)+adjtable / acqui%ag%svel(pidx, :,:)**3
   end subroutine post_proc_eikokernel
 
   subroutine forward_simulate(this, chi, istotable, isadj)

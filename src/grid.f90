@@ -23,7 +23,8 @@ module grid
   implicit none
 
   type, public :: att_grid
-    real(kind=dp), dimension(:,:,:), pointer :: a, b, c, ref_t, svel, m11, m12, m22,lat_corr,topo_angle
+    real(kind=dp), dimension(:,:,:), pointer :: a, b, c,topo_angle
+    real(kind=dp), dimension(:,:,:), pointer :: m11, m12, m22, ref_t, svel
     real(kind=dp), dimension(:), pointer :: periods, xgrids, ygrids
     real(kind=dp) :: dx, dy
     integer :: nperiod, igr, nx, ny
@@ -32,7 +33,7 @@ module grid
     procedure :: init => init_grid, get_topo, fwdsurf
   end type
 
-  integer :: win_topo, win_a, win_b, win_c, win_ref_t, win_svel, win_periods, win_lat_corr, &
+  integer :: win_topo, win_a, win_b, win_c, win_ref_t, win_svel, win_periods, &
              win_xgrids, win_ygrids, win_m11, win_m12, win_m22, win_topo_angle
   type(att_grid), target, public :: att_grid_global_ph, att_grid_global_gr
 
@@ -73,13 +74,8 @@ module grid
     call prepare_shm_array_dp_3d(this%m22, sr%nperiod, am%n_xyz(1), am%n_xyz(2), win_m22)
     call prepare_shm_array_dp_3d(this%ref_t, sr%nperiod, am%n_xyz(1), am%n_xyz(2), win_ref_t)
     call prepare_shm_array_dp_3d(this%svel, sr%nperiod, am%n_xyz(1), am%n_xyz(2), win_svel)
-    call prepare_shm_array_dp_3d(this%lat_corr, am%n_xyz(1), am%n_xyz(2), am%n_xyz(3), win_lat_corr)
 
     if (myrank == 0) then
-      do i = 1, am%n_xyz(2)
-        this%lat_corr(:,i,:) = cos(am%ygrids(i)*deg2rad)
-      enddo
-      this%ref_t = 1.
       this%periods = sr%periods
       this%xgrids = am%xgrids
       this%ygrids = am%ygrids
