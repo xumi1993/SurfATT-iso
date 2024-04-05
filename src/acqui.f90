@@ -106,8 +106,8 @@ contains
   subroutine prepare_inv(this)
     class(att_acqui), intent(inout) :: this
 
-    this%adj_s_local = zeros(this%sr%nperiod, am%n_xyz(1), am%n_xyz(2), am%n_xyz(3))
-    this%adj_density_local = zeros(this%sr%nperiod, am%n_xyz(1), am%n_xyz(2), am%n_xyz(3))
+    this%adj_s_local = 0._dp
+    this%adj_density_local = 0._dp
     if (myrank == 0) then
       this%sr%tt_fwd = 0._dp
       this%adj_s = 0._dp
@@ -230,7 +230,7 @@ contains
     call write_log('Combining eikonal and surface wave kernels...',1,this%module)
     call sum_all_1Darray_dp(this%adj_s_local, this%adj_s, this%sr%nperiod*am%n_xyz(1)*am%n_xyz(2)*am%n_xyz(3))
     call sum_all_1Darray_dp(this%adj_density_local, this%adj_density, this%sr%nperiod*am%n_xyz(1)*am%n_xyz(2)*am%n_xyz(3))
-    if (myrank == 0) then
+        if (myrank == 0) then
       do ip = 1, this%sr%nperiod
         this%ker_beta = this%ker_beta -this%adj_s(ip,:,:,:) * this%sen_vsRc(ip,:,:,:)
         this%ker_beta = this%ker_beta -this%adj_s(ip,:,:,:) * this%sen_vpRc(ip,:,:,:) &
@@ -316,7 +316,7 @@ contains
     integer :: i, j, k
 
     vtmp = 1/this%ag%svel(pidx, :,:)
-    do i = 1, am%n_xyz(3)
+        do i = 1, am%n_xyz(3)
       this%adj_s_local(pidx, :,:,i) = this%adj_s_local(pidx, :,:,i)+adjtable * vtmp**3
       this%adj_density_local(pidx, :,:,i) = this%adj_density_local(pidx, :,:,i)+kden
     enddo
@@ -326,6 +326,8 @@ contains
     class(att_acqui), intent(inout) :: this
 
     if (.not. this%is_fwd) then
+      allocate(this%adj_s_local(this%sr%nperiod, am%n_xyz(1), am%n_xyz(2), am%n_xyz(3)))
+      allocate(this%adj_density_local(this%sr%nperiod, am%n_xyz(1), am%n_xyz(2), am%n_xyz(3)))
       call prepare_shm_array_dp_4d(this%adj_s, this%sr%nperiod, am%n_xyz(1), am%n_xyz(2), am%n_xyz(3), win_adj_s)
       call prepare_shm_array_dp_4d(this%adj_density, this%sr%nperiod, am%n_xyz(1), am%n_xyz(2), am%n_xyz(3), win_adj_density)
       call prepare_shm_array_dp_4d(this%sen_vsRc, this%sr%nperiod, am%n_xyz(1), am%n_xyz(2), am%n_xyz(3), win_sen_vsRc)
