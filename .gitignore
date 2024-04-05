@@ -28,3 +28,4 @@ hawaii*.nc
 gmt.*
 test.ipynb
 pbs_*
+benchmark_*
