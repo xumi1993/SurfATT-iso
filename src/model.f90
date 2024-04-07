@@ -64,6 +64,10 @@ module model
     this%n_xyz = [size(this%xgrids), size(this%ygrids), size(this%zgrids)]
     write(msg, '(a,3i4)') 'Model grids: nx,ny,nz: ', this%n_xyz
     call write_log(msg,1,this%module)
+    write(msg, '(a,f0.4,", ",f0.4)') 'Lon range: ', xbeg, xend
+    call write_log(msg,1,this%module)
+    write(msg, '(a,f0.4,", ",f0.4)') 'Lat range: ', ybeg, yend
+    call write_log(msg,1,this%module)
     call this%get_inv_grids()
     call amd%init(this%n_xyz(1), this%n_xyz(2))
     call synchronize_all()

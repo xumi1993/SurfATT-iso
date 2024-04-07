@@ -205,6 +205,7 @@ contains
     real(kind=dp) :: max_gk
     character(len=MAX_STRING_LEN) :: secname
 
+    call write_log('Optimizing using steepest descent...',1,this%module)
     if (myrank == 0) then
       max_gk = maxval(abs(gradient_s))
       if (iter>1 .and. this%misfits(iter) > this%misfits(iter-1)) then
@@ -229,6 +230,7 @@ contains
     integer :: sit
     character(len=MAX_STRING_LEN) :: secname
 
+    call write_log('Optimizing using halving stepping...',1,this%module)
     do sit = 1, ap%inversion%max_sub_niter
       call write_log('Starting line search.',1,this%module)
       chi = 0

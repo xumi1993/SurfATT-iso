@@ -70,6 +70,8 @@ contains
       fname = ap%data%src_rec_file_ph
     endif
 
+    call write_log('Reading source receiver file: '//trim(fname),1,this%module)
+
     if (myrank == 0) then
       call srr%read_raw_src_rec_file(fname)
       this%npath = srr%npath
