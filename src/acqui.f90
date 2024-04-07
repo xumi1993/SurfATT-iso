@@ -311,9 +311,7 @@ contains
     class(att_acqui), intent(inout) :: this
     integer, intent(inout) :: pidx
     real(kind=dp), dimension(:,:),allocatable :: Tx, Ty
-    ! real(kind=dp), dimension(:,:,:,:), allocatable :: adj_s_local, adj_xi_local, adj_eta_local
     real(kind=dp),  dimension(:,:), intent(in) :: adjtable, kden
-    ! real(kind=dp), dimension(am%n_xyz(1), am%n_xyz(2)) :: vtmp
     integer :: i, j, k
 
     do i = 1, am%n_xyz(3)
