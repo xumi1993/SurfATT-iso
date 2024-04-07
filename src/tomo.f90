@@ -88,8 +88,8 @@ contains
       do itype = 1, 2
         if (.not. ap%data%vel_type(itype)) cycle
         call select_type()
-        call h%add('/stx_'//trim(ap%data%gr_name(itype)), aq%sr%stations%stx)
-        call h%add('/sty_'//trim(ap%data%gr_name(itype)), aq%sr%stations%sty)
+        call h%add('/stlo_'//trim(ap%data%gr_name(itype)), aq%sr%stations%stlo)
+        call h%add('/stla_'//trim(ap%data%gr_name(itype)), aq%sr%stations%stla)
       enddo
       call h%add('/x', am%xgrids)
       call h%add('/y', am%ygrids)

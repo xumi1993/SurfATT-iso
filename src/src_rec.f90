@@ -22,9 +22,8 @@ module src_rec
   implicit none
 
   type, public :: Stations
-    character(len=MAX_NAME_LEN),dimension(:), allocatable  :: staname
-    real(kind=dp), dimension(:), allocatable               :: stla, stlo
-    real(kind=dp), dimension(:), allocatable               :: stx, sty
+    character(len=MAX_NAME_LEN),dimension(:), pointer  :: staname
+    real(kind=dp), dimension(:), pointer               :: stla, stlo
     integer                                                :: nsta
     contains
     procedure :: get_sta_pos
@@ -51,7 +50,8 @@ module src_rec
   type(stations), target, public                           :: stations_global
   integer :: win_tt_fwd, win_vel, win_dist, win_weight, win_stla, win_stlo,&
              win_evla, win_evlo, win_periods_all, win_tt, &
-             win_staname, win_evtname, win_periods_sr, win_meanvel, win_stx, win_sty
+             win_staname, win_evtname, win_periods_sr, win_meanvel,&
+             win_sta_name, win_sta_la, win_sta_lo
 
 contains
   subroutine read_src_rec_file(this, type)
@@ -171,54 +171,44 @@ contains
 
   subroutine get_sta(this)
     class(SrcRec), intent(inout) :: this
-    character(len=MAX_NAME_LEN), dimension(this%npath*2) :: temp
-    real(kind=dp), dimension(this%npath*2) :: templa, templo
+    character(len=MAX_NAME_LEN), dimension(:), allocatable :: temp
+    real(kind=dp), dimension(:), allocatable :: templa, templo
     integer :: i, count
   
     ! get unique stations
-    count = 1
-    temp(1) = this%staname(1)
-    templa(1) = this%stla(1)
-    templo(1) = this%stlo(1)
     if (myrank == 0) then
+      count = 1
+      call append(temp, this%staname(1))
+      call append(templa, this%stla(1))
+      call append(templo, this%stlo(1))
       do i = 2, this%npath
         if (.not. any(temp == this%staname(i))) then
           count = count + 1
-          temp(count) = this%staname(i)
-          templa(count) = this%stla(i)
-          templo(count) = this%stlo(i)
+          call append(temp, this%staname(i))
+          call append(templa, this%stla(i))
+          call append(templo, this%stlo(i))
         endif
       enddo
       do i = 1, this%npath
         if (.not. any(temp == this%evtname(i))) then
           count = count + 1
-          temp(count) = this%evtname(i)
-          templa(count) = this%evla(i)
-          templo(count) = this%evlo(i)
+          call append(temp, this%evtname(i))
+          call append(templa, this%evla(i))
+          call append(templo, this%evlo(i))
         endif
       enddo
-      allocate(this%stations%staname(count),&
-              this%stations%stla(count),&
-              this%stations%stlo(count))
-      this%stations%staname = temp(1:count)
-      this%stations%stla = templa(1:count)
-      this%stations%stlo = templo(1:count)
       this%stations%nsta = count
     endif
     call synchronize_all()
     call bcast_all_singlei(this%stations%nsta)
-    if (myrank > 0) then
-      allocate(this%stations%staname(this%stations%nsta),&
-               this%stations%stla(this%stations%nsta),&
-               this%stations%stlo(this%stations%nsta))
+    call prepare_shm_array_ch_1d(this%stations%staname, this%stations%nsta, MAX_NAME_LEN, win_staname)
+    call prepare_shm_array_dp_1d(this%stations%stla, this%stations%nsta, win_stla)
+    call prepare_shm_array_dp_1d(this%stations%stlo, this%stations%nsta, win_stlo)
+    if (myrank == 0) then
+      this%stations%staname = temp(1:count)
+      this%stations%stla = templa(1:count)
+      this%stations%stlo = templo(1:count)
     endif
-    call bcast_all_ch_array(this%stations%staname, this%stations%nsta, MAX_NAME_LEN)
-    call bcast_all_dp(this%stations%stla, this%stations%nsta)
-    call bcast_all_dp(this%stations%stlo, this%stations%nsta)
-    allocate(this%stations%stx(this%stations%nsta))
-    allocate(this%stations%sty(this%stations%nsta))
-    this%stations%stx = this%stations%stlo
-    this%stations%sty = this%stations%stla
     call synchronize_all()
 
   end subroutine get_sta
@@ -248,11 +238,11 @@ contains
     call synchronize_all()
   end subroutine get_mean_vel
 
-  subroutine get_evt_gather(this, evtname, period, tt, vel, dist, weight, stx, sty, ipath)
+  subroutine get_evt_gather(this, evtname, period, tt, vel, dist, weight, stlo, stla, ipath)
     class(SrcRec), intent(inout) :: this
     character(len=*), intent(in) :: evtname
     real(kind=dp), intent(in) :: period
-    real(kind=dp), dimension(:), allocatable, intent(out) :: tt, vel, dist, stx, sty
+    real(kind=dp), dimension(:), allocatable, intent(out) :: tt, vel, dist, stlo, stla
     real(kind=dp), dimension(:), allocatable, intent(out) :: weight
     integer, dimension(:), allocatable, intent(out) :: ipath
     integer :: i, n, idx, indices(this%npath), j
@@ -264,7 +254,7 @@ contains
         indices(n) = i
       endif
     enddo
-    allocate(tt(n), vel(n), dist(n), stx(n), sty(n), weight(n),ipath(n))
+    allocate(tt(n), vel(n), dist(n), stlo(n), stla(n), weight(n),ipath(n))
     do i = 1, n
       idx = indices(i)
       ipath(i) = idx
@@ -274,8 +264,8 @@ contains
       weight(i) = this%weight(idx)
       do j = 1, this%stations%nsta
         if (this%stations%staname(j) == this%staname(idx)) then
-          stx(i) = this%stations%stx(j)
-          sty(i) = this%stations%sty(j)
+          stlo(i) = this%stations%stlo(j)
+          stla(i) = this%stations%stla(j)
         endif
       enddo
     enddo
@@ -329,12 +319,9 @@ contains
     real(kind=dp), intent(out) :: stax, stay
     integer :: i
 
-    do i = 1, this%nsta
-      if (this%staname(i) == src_name) then
-        stax = this%stx(i)
-        stay = this%sty(i)
-      endif
-    enddo
+    i = find_loc(this%staname, src_name)
+    stay = this%stla(i)
+    stax = this%stlo(i)
   end subroutine get_sta_pos
 
   subroutine merge_sta()
@@ -357,29 +344,21 @@ contains
         enddo
         if (n/=0) then
           stations_global%nsta = ngr+n
-          allocate(stations_global%staname(ngr+n),stations_global%stx(ngr+n),&
-                   stations_global%sty(ngr+n),stations_global%stla(ngr+n),&
+          allocate(stations_global%staname(ngr+n),stations_global%stla(ngr+n),&
                    stations_global%stlo(ngr+n))
           stations_global%staname(1:ngr) = src_rec_global_gr%stations%staname(1:ngr)
-          stations_global%stx(1:ngr) = src_rec_global_gr%stations%stx(1:ngr)
-          stations_global%sty(1:ngr) = src_rec_global_gr%stations%sty(1:ngr)
           stations_global%stla(1:ngr) = src_rec_global_gr%stations%stla(1:ngr)
           stations_global%stlo(1:ngr) = src_rec_global_gr%stations%stlo(1:ngr)
           do i = 1, n
             stations_global%staname(ngr+i) = src_rec_global_ph%stations%staname(idx(i))
-            stations_global%stx(ngr+i) = src_rec_global_ph%stations%stx(idx(i))
-            stations_global%sty(ngr+i) = src_rec_global_ph%stations%sty(idx(i))
             stations_global%stla(ngr+i) = src_rec_global_ph%stations%stla(idx(i))
             stations_global%stlo(ngr+i) = src_rec_global_ph%stations%stlo(idx(i))
           enddo
         else
           stations_global%nsta = ngr
-          allocate(stations_global%staname(ngr),stations_global%stx(ngr),&
-                   stations_global%sty(ngr),stations_global%stla(ngr),&
+          allocate(stations_global%staname(ngr), stations_global%stla(ngr),&
                    stations_global%stlo(ngr))
           stations_global%staname(1:ngr) = src_rec_global_gr%stations%staname(1:ngr)
-          stations_global%stx(1:ngr) = src_rec_global_gr%stations%stx(1:ngr)
-          stations_global%sty(1:ngr) = src_rec_global_gr%stations%sty(1:ngr)
           stations_global%stla(1:ngr) = src_rec_global_gr%stations%stla(1:ngr)
           stations_global%stlo(1:ngr) = src_rec_global_gr%stations%stlo(1:ngr)
         endif
@@ -390,8 +369,6 @@ contains
       call bcast_all_singlei(stations_global%nsta)
       if (myrank > 0) then
         allocate(stations_global%staname(stations_global%nsta),&
-                 stations_global%stx(stations_global%nsta),&
-                 stations_global%sty(stations_global%nsta),&
                  stations_global%stla(stations_global%nsta),&
                  stations_global%stlo(stations_global%nsta))
       endif
@@ -399,8 +376,6 @@ contains
           stations_global%nsta,MAX_NAME_LEN)
       call bcast_all_dp(stations_global%stla, stations_global%nsta)
       call bcast_all_dp(stations_global%stlo, stations_global%nsta)
-      call bcast_all_dp(stations_global%stx, stations_global%nsta)
-      call bcast_all_dp(stations_global%sty, stations_global%nsta)
     elseif (ap%data%vel_type(1)) then
       stations_global = src_rec_global_ph%stations
     elseif (ap%data%vel_type(2)) then

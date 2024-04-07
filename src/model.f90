@@ -55,10 +55,10 @@ module model
 
     this%d_xyz = ap%domain%interval
     this%zgrids = arange(ap%domain%depth(1),ap%domain%depth(2),this%d_xyz(3))
-    xbeg = minval(staall%stx) - ap%domain%num_grid_margin*this%d_xyz(1)
-    xend = maxval(staall%stx) + ap%domain%num_grid_margin*this%d_xyz(1)
-    ybeg = minval(staall%sty) - ap%domain%num_grid_margin*this%d_xyz(2)
-    yend = maxval(staall%sty) + ap%domain%num_grid_margin*this%d_xyz(2)
+    xbeg = minval(staall%stlo) - ap%domain%num_grid_margin*this%d_xyz(1)
+    xend = maxval(staall%stlo) + ap%domain%num_grid_margin*this%d_xyz(1)
+    ybeg = minval(staall%stla) - ap%domain%num_grid_margin*this%d_xyz(2)
+    yend = maxval(staall%stla) + ap%domain%num_grid_margin*this%d_xyz(2)
     this%xgrids = arange(xbeg, xend, this%d_xyz(1))
     this%ygrids = arange(ybeg, yend, this%d_xyz(2))
     this%n_xyz = [size(this%xgrids), size(this%ygrids), size(this%zgrids)]

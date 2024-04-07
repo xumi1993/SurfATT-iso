@@ -51,6 +51,14 @@ module utils
     module procedure interp2_0_dp, interp2_1_dp, interp2_2_dp
   end interface interp2
 
+  interface append
+    module procedure append_i, append_r8, append_ch_name
+  end interface append
+
+  interface find_loc
+    module procedure find_str_loc, find_int_loc
+  end interface find_loc
+
   interface meshgrid_ij
     module procedure meshgrid2_ij, meshgrid3_ij
   end interface meshgrid_ij
@@ -767,6 +775,81 @@ end function
     return
   end function interp2_2_dp
 
+  pure subroutine append_i(list, value)
+    integer(kind = IPRE), dimension(:), allocatable, intent(inout) :: list
+    integer(kind = IPRE), intent(in) :: value
+    integer(kind = IPRE), dimension(:), allocatable :: tmp
+
+    if (.not. allocated(list)) then
+      allocate(list(1))
+      list(1) = value
+      return
+    end if
+    allocate(tmp(size(list) + 1))
+    tmp = [ list, value ]
+    call move_alloc(tmp, list)
+    return
+  end subroutine append_i
+
+  pure subroutine append_r8(list, value)
+    real(kind = DPRE), dimension(:), allocatable, intent(inout) :: list
+    real(kind = DPRE), intent(in) :: value
+    real(kind = DPRE), dimension(:), allocatable :: tmp
+
+    if (.not. allocated(list)) then
+      allocate(list(1))
+      list(1) = value
+      return
+    end if
+    allocate(tmp(size(list) + 1))
+    tmp = [ list, value ]
+    call move_alloc(tmp, list)
+    return
+  end subroutine append_r8
+
+  pure subroutine append_ch_name(list, value)
+    character(len = MAX_NAME_LEN), dimension(:), allocatable, intent(inout) :: list
+    character(len = MAX_NAME_LEN), intent(in) :: value
+    character(len = MAX_NAME_LEN), dimension(:), allocatable :: tmp
+
+    if (.not. allocated(list)) then
+      allocate(list(1))
+      list(1) = value
+      return
+    end if
+    allocate(tmp(size(list) + 1))
+    tmp = [ list, value ]
+    call move_alloc(tmp, list)
+    return
+  end subroutine append_ch_name
+
+  pure function find_str_loc(strings, value) result(loc)
+    character(len=*), dimension(:), intent(in) :: strings
+    character(len=*), intent(in) :: value
+    integer :: loc, i
+    
+    loc = 0
+    do i = 1, size(strings)
+      if (trim(strings(i)) == trim(value)) then
+        loc = i
+        exit
+      end if
+    end do
+  end function find_str_loc
+
+  pure function find_int_loc(ints, value) result(loc)
+    integer, dimension(:), intent(in) :: ints
+    integer, intent(in) :: value
+    integer :: loc, i
+    
+    loc = 0
+    do i = 1, size(ints)
+      if (ints(i) == value) then
+        loc = i
+        exit
+      end if
+    end do
+  end function find_int_loc
 
   subroutine gradient_2_geo(f, lon, lat, tx, ty)
     ! argument type, intent(inout) :: gradient_2_geo
