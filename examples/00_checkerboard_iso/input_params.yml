@@ -33,7 +33,7 @@ inversion:
   vel_range: [1.8, 4.2]
   init_model_path: /path/to/init_mod.h5 # Path to initial model. Only valid in init_model_type: 2
   # ------- Regularization --------
-  kdensity_coe: 1
+  kdensity_coe: 1 # Kdensity_coe is used to rescale the final kernel:  kernel -> kernel / pow(density of kernel, Kdensity_coe).
   ncomponents: 5 # number of multiple grid
   n_inv_grid: [8,9,8]
   # ------- Inversion parameters --------
