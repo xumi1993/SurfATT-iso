@@ -292,14 +292,13 @@ contains
 
   subroutine write_gradient()
     character(len=MAX_STRING_LEN) :: secname
-    integer :: i
 
     write(secname,'(a,i3.3)') '/gradient_',iter  
     call h%add(secname, gradient_s)
-    do i = 1, 2
-      if (.not. ap%data%vel_type(i)) cycle
+    do itype = 1, 2
+      if (.not. ap%data%vel_type(itype)) cycle
       call select_type()
-      write(secname,'(a,i3.3)') '/kdensity_',trim(ap%data%gr_name(i)),'_',iter
+      write(secname,'(a,a,"_",i3.3)') '/kdensity_',trim(ap%data%gr_name(itype)),iter
       call h%add(secname, aq%ker_density)
     enddo
 
