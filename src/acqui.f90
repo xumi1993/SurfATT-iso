@@ -156,7 +156,7 @@ contains
         pidx = this%isrcs(i,1); stidx = this%isrcs(i,2)
         write(this%message, '("rank: ",i0,a,F0.4,a,a," (",i0,"/",i0,")")') myrank,' period: ',&
               this%sr%periods(pidx),' src_name: ',&
-              trim(this%sr%stations%staname(stidx)), i, this%nsrc
+              trim(this%sr%stations%staname(stidx)), i, this%iend-this%istart+1
         if (verbose_local) call write_log(this%message,0,this%module)
         ! get receivers for this source
         call ma%get_recs(this%sr,pidx,this%sr%stations%staname(stidx))

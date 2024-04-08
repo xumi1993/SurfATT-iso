@@ -960,6 +960,29 @@ end function
     
   end function
 
+  pure function smooth_1(data, z, sigma) result(smdata)
+    real(kind=dp), intent(in) :: sigma
+    real(kind=dp), dimension(:), intent(in) :: data, z
+    real(kind=dp), dimension(:), allocatable :: smdata
+    real(kind=dp), dimension(:), allocatable :: w
+    integer :: i, n1, n2
+    real(kind=dp) :: sigma3, wsum, sigma_sq, dz
+    integer :: nx
+
+    sigma3 = sigma*3
+    sigma_sq = sigma**2
+    smdata = zeros(size(data))
+    dz = z(2)-z(1)
+    nx = sigma3/dz
+    do i = 1, size(data)
+      wsum = 0.
+      n1 = max(1, i - nx); n2 = min(size(data), i + nx)
+      w = exp(-((arange(n1,n2) - i)*dz)**2 / (2.0_dp * sigma_sq))
+      smdata(i) = sum(w*data(n1:n2))
+      smdata(i) = smdata(i) / sum(w)
+    end do
+  end function
+
   pure function gps2dist_scalar(lat0, lon0, lat1, lon1) result(dist)
     ! Input parameters
     real(kind=dp), intent(in) :: lon0, lon1, lat0, lat1

@@ -146,7 +146,12 @@ contains
     call synchronize_all()
     call bcast_all_singlei(this%nperiod)
     call prepare_shm_array_dp_1d(this%periods, this%nperiod, win_periods_sr)
-    if (myrank == 0) this%periods = temp(1:count)
+    if (myrank == 0) then
+      this%periods = temp(1:count)
+      if (this%periods(this%nperiod)*1.4 > ap%domain%depth(2)) then
+        call write_log('the depth of the model smaller than 1.4 * maximum period',2,this%module)
+      endif
+    endif
     call synchronize_all()
 
   end subroutine get_periods

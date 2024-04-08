@@ -76,10 +76,9 @@ module model
 
   subroutine get_init_model(this)
     class(att_model), intent(inout) :: this
-    integer, parameter :: iter_num=30
     integer :: i, j, ier, niter
     character(len=:), allocatable :: msger
-    real(kind=dp), dimension(iter_num) :: misfits
+    real(kind=dp), dimension(:), allocatable :: misfits
     real(kind=dp), dimension(:,:,:), allocatable :: vstmp
 
     call prepare_shm_array_dp_3d(this%vs3d, this%n_xyz(1), this%n_xyz(2), this%n_xyz(3), win_vs3d)
@@ -88,7 +87,7 @@ module model
     this%vs1d = linspace(ap%inversion%vel_range(1), ap%inversion%vel_range(2), this%n_xyz(3))
     if (ap%inversion%init_model_type == 1) then
       if (myrank == 0) then
-        call this%inv1d(iter_num, this%vs1d, niter, misfits)
+        call this%inv1d(ap%inversion%niter, this%vs1d, niter, misfits)
       endif
       call synchronize_all()
       call bcast_all_dp(this%vs1d, this%n_xyz(3))
@@ -166,16 +165,17 @@ module model
     real(kind=dp), parameter :: minderr = 0.001
     real(kind=dp), dimension(this%n_xyz(3)), intent(out) :: vsinv
     integer, intent(out) :: niter
-    real(kind=dp), dimension(iter_num), intent(out) :: misfits
+    real(kind=dp), dimension(:), allocatable, intent(out) :: misfits
     real(kind=dp), dimension(this%n_xyz(3)) :: update, sen,update_total
     real(kind=dp), dimension(:,:), allocatable :: sen_vs, sen_vp, sen_rho
     character(len=MAX_STRING_LEN) :: msg
-    real(kind=dp) :: derr, chi
+    real(kind=dp) :: derr, chi, sigma
     integer :: iter, ip, itype
     real(kind=dp), dimension(:),allocatable :: tmp
 
     vsinv = this%vs1d
-    misfits = 0.
+    misfits = zeros(iter_num)
+    sigma = this%n_xyz(3)/ap%inversion%n_inv_grid(3)/2
     call write_log('Do 1D inverison using averaged surface wave data',1,this%module)
     do iter = 1, iter_num
       update_total = 0.
@@ -207,6 +207,7 @@ module model
           update = update - sen * (sr%meanvel(ip)-tmp(ip))
         enddo
         update = update / sr%nperiod
+        update = smooth_1(update, this%zgrids, sigma)
         update_total = update_total + update*ap%data%weights(itype)
       enddo
       write(msg,'(a,i0,a,f8.4)') 'Iteration ', iter, ' misfit: ', misfits(iter)
