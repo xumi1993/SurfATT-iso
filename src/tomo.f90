@@ -207,6 +207,7 @@ contains
 
     call write_log('Optimizing using steepest descent...',1,this%module)
     if (myrank == 0) then
+      call write_gradient()
       max_gk = maxval(abs(gradient_s))
       if (iter>1 .and. this%misfits(iter) > this%misfits(iter-1)) then
         write(this%message, '(a,F0.4,a,F0.4)') 'Misfit increase from ',this%misfits(iter-1),' to ',this%misfits(iter)
@@ -231,6 +232,7 @@ contains
     character(len=MAX_STRING_LEN) :: secname
 
     call write_log('Optimizing using halving stepping...',1,this%module)
+    call write_gradient()
     do sit = 1, ap%inversion%max_sub_niter
       call write_log('Starting line search.',1,this%module)
       chi = 0
@@ -287,6 +289,21 @@ contains
     call h%add(secname, am%vs3d)
 
   end subroutine write_tmp_model
+
+  subroutine write_gradient()
+    character(len=MAX_STRING_LEN) :: secname
+    integer :: i
+
+    write(secname,'(a,i3.3)') '/gradient_',iter  
+    call h%add(secname, gradient_s)
+    do i = 1, 2
+      if (.not. ap%data%vel_type(i)) cycle
+      call select_type()
+      write(secname,'(a,i3.3)') '/kdensity_',trim(ap%data%gr_name(i)),'_',iter
+      call h%add(secname, aq%ker_density)
+    enddo
+
+  end subroutine write_gradient
 
   subroutine select_type()
     if (itype == 1) then

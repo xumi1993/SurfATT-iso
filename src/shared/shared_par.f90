@@ -17,7 +17,7 @@ module constants
   character(len=MAX_STRING_LEN),parameter :: srfile = 'src_rec_iter.h5'
   character(len=MAX_STRING_LEN),parameter :: modfile = 'model_iter.h5'
 
-
+  real(kind=dp), parameter :: precond_thres = 1.0d-2 
   integer, parameter :: iter_store = 6
 
 end module constants

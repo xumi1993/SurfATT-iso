@@ -295,12 +295,17 @@ contains
   end subroutine post_processing_for_kernel
 
   subroutine regularize_ker_density(this, precond)
+    !> Regularize the kernel density.
+    !! Inputs:
+    !!   this: an object of type att_acqui
+    !! Outputs:
+    !!   precond: a 3D array of real numbers representing the preconditioned kernel density
     class(att_acqui), intent(inout) :: this
     real(kind=dp), dimension(:,:,:), allocatable, intent(out) :: precond
 
     precond = zeros(am%n_xyz(1), am%n_xyz(2), am%n_xyz(3))
     precond = abs(this%ker_density)/maxval(abs(this%ker_density))
-    where(precond<1e-2)
+    where(precond<precond_thres)
       precond = 0
     elsewhere
       precond = 1/precond**ap%inversion%kdensity_coe
