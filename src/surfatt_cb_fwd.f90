@@ -41,7 +41,7 @@ program surfatt_cb_fwd
   call ap%read(fname)
 
   ! intialize logger
-  call setuplog()
+  call setuplog(ap%output%log_level)
 
   ! read dispersion data
   if (ap%data%vel_type(1)) call sr_ph%read(type=0)

@@ -16,6 +16,8 @@ module constants
 
   character(len=MAX_STRING_LEN),parameter :: srfile = 'src_rec_iter.h5'
   character(len=MAX_STRING_LEN),parameter :: modfile = 'model_iter.h5'
+  character(len=MAX_STRING_LEN),parameter :: log_fname='output_attsurf_tomo.log'
+
 
   real(kind=dp), parameter :: precond_thres = 1.0d-2 
   integer, parameter :: iter_store = 6
@@ -27,5 +29,7 @@ module shared_par
   implicit none
 
   integer :: myrank, mysize
+  integer :: LID
+  integer :: loglevel
   real(kind=dp), dimension(:,:,:), allocatable :: gradient_s
 end module shared_par

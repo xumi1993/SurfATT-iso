@@ -19,9 +19,6 @@ module para
   use stdlib_logger, only: debug_level, information_level
   implicit none
   
-  integer, public                                          :: LID=50, loglevel
-  character(len=MAX_STRING_LEN)                            :: log_fname='output_attsurf_tomo.log'
-
   ! ---------------------- sections of parameter ------------------
   type, public :: para_data
     character(len=MAX_STRING_LEN)                          :: src_rec_file_ph, src_rec_file_gr

@@ -1,16 +1,17 @@
 module setup_att_log
-  use para, ap => att_para_global
+  use shared_par
+  use my_mpi
   use stdlib_logger, logger => global_logger
   implicit none
 
 contains
 
-  subroutine setuplog()
-    integer :: stat
+  subroutine setuplog(log_level)
+    integer :: stat, log_level
 
     ! if (myrank == 0) then
     call logger%add_log_file(log_fname, LID, stat=stat)      
-    call logger%configure(level=ap%output%log_level, time_stamp=.true.)
+    call logger%configure(level=log_level, time_stamp=.true.)
     ! end
     call bcast_all_singlei(LID)
     
