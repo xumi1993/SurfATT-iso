@@ -53,13 +53,13 @@ contains
     if (mod(nx, this%glob_px) /= 0) then
       myrank_value = mod(myrank, this%glob_px)
       call max_all_all_i(myrank_value, max_rank_x)
-      if (myrank_value==max_rank_x) this%loc_ix_end = this%loc_ix_end + 1
+      if (myrank_value==max_rank_x) this%loc_ix_end = nx
     end if
     if (mod(ny, this%glob_py) /= 0) then
       myrank_value = myrank / this%glob_px
       call max_all_all_i(myrank_value, max_rank_y)
-      if (myrank_value==max_rank_y) this%loc_iy_end = this%loc_iy_end + 1
-    end if
+      if (myrank_value==max_rank_y) this%loc_iy_end = ny
+    end if      
 
     ! local number of cells
     loc_ix(myrank+1, 1) = this%loc_ix_start
