@@ -84,19 +84,20 @@ contains
     if (myrank == 0) then 
       open(OID, file=trim(ap%output%output_path)//'/objective_function.csv',&
           status='replace',action='write')
-      call h%open(model_fname, status='new', action='w')
-      do itype = 1, 2
-        if (.not. ap%data%vel_type(itype)) cycle
-        call select_type()
-        call h%add('/stlo_'//trim(ap%data%gr_name(itype)), aq%sr%stations%stlo)
-        call h%add('/stla_'//trim(ap%data%gr_name(itype)), aq%sr%stations%stla)
-      enddo
-      call h%add('/x', am%xgrids)
-      call h%add('/y', am%ygrids)
-      call h%add('/z', am%zgrids)
-      call h%add('/vs_000', am%vs3d)
+      if (ap%output%verbose_level > 0) then
+        call h%open(model_fname, status='new', action='w')
+        do itype = 1, 2
+          if (.not. ap%data%vel_type(itype)) cycle
+          call select_type()
+          call h%add('/stlo_'//trim(ap%data%gr_name(itype)), aq%sr%stations%stlo)
+          call h%add('/stla_'//trim(ap%data%gr_name(itype)), aq%sr%stations%stla)
+        enddo
+        call h%add('/x', am%xgrids)
+        call h%add('/y', am%ygrids)
+        call h%add('/z', am%zgrids)
+        call h%add('/vs_000', am%vs3d)
+      endif
     endif
-    if (ap%output%is_save_initial_model) call am%write('initial_model')
     call synchronize_all()
   end subroutine initialize_inv
 
@@ -164,7 +165,7 @@ contains
     enddo
     ! write final model
     call am%write('final_model')
-    if (myrank == 0) call h%close(finalize=.true.)
+    if (myrank == 0 .and. ap%output%verbose_level > 0) call h%close(finalize=.true.)
     close(OID)
     call write_log('Inversion is done.',1,this%module)
   end subroutine do_inversion
@@ -192,9 +193,11 @@ contains
       call write_log(this%message,1,this%module)
     endif
     ! write synthetic tt to file
-    if (myrank == 0) write(fname, '(a,I3.3,".csv")') trim(ap%output%output_path)&
-        //'src_rec_file_forward_'//trim(ap%data%gr_name(itype))//'_',iter-1
-    call aq%sr%to_csv(trim(fname))
+    if (ap%output%verbose_level > 1) then
+      if (myrank == 0) write(fname, '(a,I3.3,".csv")') trim(ap%output%output_path)&
+          //'src_rec_file_forward_'//trim(ap%data%gr_name(itype))//'_',iter-1
+      call aq%sr%to_csv(trim(fname))
+    endif
     call synchronize_all()
     
   end subroutine eikokernel
@@ -285,22 +288,26 @@ contains
   subroutine write_tmp_model()
     character(len=MAX_STRING_LEN) :: secname
 
-    write(secname,'(a,i3.3)') '/vs_',iter  
-    call h%add(secname, am%vs3d)
+    if (ap%output%verbose_level > 0) then
+      write(secname,'(a,i3.3)') '/vs_',iter  
+      call h%add(secname, am%vs3d)
+    endif
 
   end subroutine write_tmp_model
 
   subroutine write_gradient()
     character(len=MAX_STRING_LEN) :: secname
 
-    write(secname,'(a,i3.3)') '/gradient_',iter  
-    call h%add(secname, gradient_s)
-    do itype = 1, 2
-      if (.not. ap%data%vel_type(itype)) cycle
-      call select_type()
-      write(secname,'(a,a,"_",i3.3)') '/kdensity_',trim(ap%data%gr_name(itype)),iter
-      call h%add(secname, aq%ker_density)
-    enddo
+    if (ap%output%verbose_level > 0) then
+      write(secname,'(a,i3.3)') '/gradient_',iter  
+      call h%add(secname, gradient_s)
+      do itype = 1, 2
+        if (.not. ap%data%vel_type(itype)) cycle
+        call select_type()
+        write(secname,'(a,a,"_",i3.3)') '/kdensity_',trim(ap%data%gr_name(itype)),iter
+        call h%add(secname, aq%ker_density)
+      enddo
+    endif
 
   end subroutine write_gradient
 

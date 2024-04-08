@@ -34,8 +34,7 @@ module para
 
   type para_output
     character(len=MAX_STRING_LEN), public                  :: output_path='OUTPUT_FILES'
-    logical, public                                        :: is_save_initial_model
-    integer, public                                        :: log_level=1
+    integer, public                                        :: log_level=1, verbose_level=1
   end type para_output
 
   type para_domain
@@ -127,14 +126,13 @@ module para
         output => root%get_dictionary('output', required=.true., error=io_err)
         if (associated(io_err)) call exit_mpi(myrank, trim(io_err%message))
         this%output%output_path = output%get_string('output_path', error=io_err)
-        this%output%is_save_initial_model = output%get_logical('is_save_initial_model', error=io_err)
-        if (associated(io_err)) call exit_mpi(myrank, trim(io_err%message))
         loglevel = output%get_integer('log_level', error=io_err)
         if (loglevel == 0) then
           this%output%log_level = debug_level ! in stdlib_logger
         else
           this%output%log_level = information_level
         endif
+        this%output%verbose_level = output%get_integer('verbose_level', error=io_err)
 
         ! read domain section
         domain => root%get_dictionary('domain',required=.true., error=io_err)
@@ -199,8 +197,8 @@ module para
     call bcast_all_l_array(this%data%vel_type,2)
     ! broadcast output
     call bcast_all_string(this%output%output_path)
-    call bcast_all_singlel(this%output%is_save_initial_model)
     call bcast_all_singlei(this%output%log_level)
+    call bcast_all_singlei(this%output%verbose_level)
     ! broadcast domain
     call bcast_all_dp(this%domain%ref_pos, 2)
     call bcast_all_dp(this%domain%depth, 2)

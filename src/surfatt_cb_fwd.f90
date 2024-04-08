@@ -39,7 +39,6 @@ program surfatt_cb_fwd
 
   ! read parameter file
   call ap%read(fname)
-  ! ap%output%is_save_initial_model = .false.
 
   ! intialize logger
   call setuplog()
