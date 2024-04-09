@@ -50,7 +50,7 @@ contains
       level_msg = 'ERROR'
     endif
 
-    if (myrank == 0) then
+    if (myrank == 0 .and. level >= loglevel) then
       call logger % log_message( msg,                  &
                                 module = module_name,  &
                                 prefix = trim(level_msg) )
