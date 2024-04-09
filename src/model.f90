@@ -162,7 +162,7 @@ module model
     class(att_model), intent(inout) :: this
     type(srcrec), pointer :: sr
     integer, intent(in) :: iter_num
-    real(kind=dp), parameter :: minderr = 0.001
+    real(kind=dp), parameter :: minderr = 0.0001
     real(kind=dp), dimension(this%n_xyz(3)), intent(out) :: vsinv
     integer, intent(out) :: niter
     real(kind=dp), dimension(:), allocatable, intent(out) :: misfits
@@ -175,7 +175,7 @@ module model
 
     vsinv = this%vs1d
     misfits = zeros(iter_num)
-    sigma = this%n_xyz(3)/ap%inversion%n_inv_grid(3)/2
+    sigma = this%zgrids(this%n_xyz(3))/ap%inversion%n_inv_grid(3)/2
     call write_log('Do 1D inverison using averaged surface wave data',1,this%module)
     do iter = 1, iter_num
       update_total = 0.
