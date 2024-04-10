@@ -29,3 +29,5 @@ gmt.*
 test.ipynb
 pbs_*
 benchmark_*
+slurm-*
+slurm_*
