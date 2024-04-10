@@ -79,7 +79,7 @@ contains
     enddo
     if (myrank==0 .and. (nargs==0 .or. any(args == '-h'))) then
       write(*,*)'Usage: surfatt_cb_fwd -i para_file -n nx/ny/nz [-h] '// &
-                '[-m margin_km] [-p pert] [-s anom_size_km]'
+                '[-m margin_degree] [-p pert] [-s anom_size_km]'
       write(*,*)''
       write(*,*)'Create checkerboard and forward simulate travel time for surface wave'
       write(*,*)''
@@ -89,7 +89,7 @@ contains
       write(*,*)''
       write(*,*)'optional arguments:'
       write(*,*)' -h                  Print help message'
-      write(*,*)' -m margin_km        Margin area in km between anomaly as boundary, defaults to 0km'
+      write(*,*)' -m margin_degree        Margin area in degree between anomaly as boundary, defaults to 0'
       write(*,*)' -p pert_vel         Magnitude of velocity perturbations, defaults to 0.08'
       write(*,*)' -s anom_size_km     size of anomalies at the top in km, default to uniform anomaly size in Z direction'
     endif
