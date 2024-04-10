@@ -337,7 +337,7 @@ contains
       if (abs(misfit_diff) < ap%inversion%min_derr) isbreak = .true.
     endif
     call synchronize_all()
-    call bcast_all_singlel(isbreak)
+    call bcast_all(isbreak)
     
   end subroutine break_iter
 

@@ -104,7 +104,7 @@ module grid
                      am%zgrids,tmp)
       endif
       call synchronize_all()
-      call bcast_all_dp(tmp, this%nperiod)
+      call bcast_all(tmp, this%nperiod)
       if (iend - istart >= 0) then
         do ip = istart, iend
           sigma = tmp(ip) * this%periods(ip) * ap%topo%wavelen_factor*km2deg

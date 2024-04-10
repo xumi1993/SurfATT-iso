@@ -193,8 +193,8 @@ contains
       enddo ! i = acqui%istart, acqui%iend
     endif ! if ((acqui%iend-acqui%istart)>=0)
     call synchronize_all()
-    call sum_all_dp(chi_local, chi)
-    if (istotable) call sum_all_1Darray_dp(local_tt, acqui%sr%tt_fwd,acqui%sr%npath)
+    call sum_all(chi_local, chi)
+    if (istotable) call sum_all(local_tt, acqui%sr%tt_fwd,acqui%sr%npath)
   end subroutine forward_simulate
 
   subroutine optimize(this)
@@ -239,7 +239,7 @@ contains
       call write_log(this%message,1,this%module)
       call acqui%prepare_fwd_linesearch(xi_new, eta_new)
       call this%forward_simulate(chi_global, .false., .false.)
-      call bcast_all_singledp(chi_global)
+      call bcast_all(chi_global)
       if (chi_global > chi0) then
         write(this%message, '(a,f6.4,a,f6.4)') 'Misfit increased from ',chi0,' to ',chi_global
         call write_log(this%message,0,this%module)

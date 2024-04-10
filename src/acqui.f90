@@ -96,7 +96,7 @@ contains
       call write_log(this%message,1,this%module)
     endif
     call synchronize_all()
-    call bcast_all_singlei(this%nsrc)
+    call bcast_all(this%nsrc)
     call prepare_shm_array_i_2d(this%isrcs, this%nsrc, 2, win_isrcs)
     if (myrank == 0) this%isrcs(1:this%nsrc, :) = isrcs(1:this%nsrc, :)
     call synchronize_all()
@@ -183,10 +183,10 @@ contains
       enddo
     endif
     call synchronize_all()
-    if (istotable) call sum_all_1Darray_dp(local_tt, this%sr%tt_fwd, this%sr%npath)
+    if (istotable) call sum_all(local_tt, this%sr%tt_fwd, this%sr%npath)
     ! reduce chi
-    call sum_all_dp(chi_local, chi_global)
-    call bcast_all_singledp(chi_global)
+    call sum_all(chi_local, chi_global)
+    call bcast_all(chi_global)
     call synchronize_all()
   end subroutine forward_simulate
 
@@ -229,8 +229,8 @@ contains
     integer :: ip, i
 
     ! call write_log('Reduce adjoint fields...',0,this%module)
-    call sum_all_1Darray_dp(this%adj_s_local, this%adj_s, this%sr%nperiod*am%n_xyz(1)*am%n_xyz(2))
-    call sum_all_1Darray_dp(this%adj_density_local, this%adj_density, this%sr%nperiod*am%n_xyz(1)*am%n_xyz(2))
+    call sum_all(this%adj_s_local, this%adj_s, this%sr%nperiod, am%n_xyz(1), am%n_xyz(2))
+    call sum_all(this%adj_density_local, this%adj_density, this%sr%nperiod, am%n_xyz(1), am%n_xyz(2))
     call write_log('Combining eikonal and surface wave kernels...',1,this%module)
     if (myrank == 0) then
       do ip = 1, this%sr%nperiod

@@ -23,14 +23,15 @@ module model
   use setup_att_log
   implicit none
 
-  integer :: win_vs3d, win_vp3d, win_rho3d, &
+  integer :: win_vs3d, win_vp3d, win_rho3d,win_vs1d, &
              win_vs3d_opt, win_vp3d_opt, win_rho3d_opt
   real(kind=dp), dimension(:), private, allocatable              :: anch, n_pi
   
   type, public :: att_model
     real(kind=dp)                                          :: d_xyz(3)
     integer                                                :: n_xyz(3)
-    real(kind=dp), dimension(:), allocatable               :: xgrids, ygrids, zgrids, vs1d
+    real(kind=dp), dimension(:), allocatable               :: xgrids, ygrids, zgrids
+    real(kind=dp), dimension(:), pointer                   :: vs1d
     real(kind=dp), dimension(:,:), allocatable             :: xinv, yinv, zinv, topo
     real(kind=dp), dimension(:,:,:), pointer               :: vs3d, vp3d, rho3d
     real(kind=dp), dimension(:,:,:), pointer               :: vs3d_opt, vp3d_opt, rho3d_opt
@@ -84,31 +85,33 @@ module model
     call prepare_shm_array_dp_3d(this%vs3d, this%n_xyz(1), this%n_xyz(2), this%n_xyz(3), win_vs3d)
     call prepare_shm_array_dp_3d(this%vp3d, this%n_xyz(1), this%n_xyz(2), this%n_xyz(3), win_vp3d)
     call prepare_shm_array_dp_3d(this%rho3d, this%n_xyz(1), this%n_xyz(2), this%n_xyz(3), win_rho3d)
-    this%vs1d = linspace(ap%inversion%vel_range(1), ap%inversion%vel_range(2), this%n_xyz(3))
-    if (ap%inversion%init_model_type == 1) then
-      if (myrank == 0) then
+    call prepare_shm_array_dp_1d(this%vs1d, this%n_xyz(3), win_vs1d)
+    ! this%vs1d = linspace(ap%inversion%vel_range(1), ap%inversion%vel_range(2), this%n_xyz(3))
+    if (myrank == 0) then
+      if (ap%inversion%init_model_type == 0) then
+        this%vs1d = linspace(ap%inversion%vel_range(1), ap%inversion%vel_range(2), this%n_xyz(3))
+      elseif (ap%inversion%init_model_type == 1) then
         call this%inv1d(ap%inversion%niter, this%vs1d, niter, misfits)
-      endif
-      call synchronize_all()
-      call bcast_all_dp(this%vs1d, this%n_xyz(3))
-    elseif (ap%inversion%init_model_type == 2) then
-      if (myrank==0) then
+      elseif (ap%inversion%init_model_type == 2) then
         ! call load_npy(ap%inversion%init_model_path, vstmp, ier, msger)
         call h5read(ap%inversion%init_model_path, '/vs', vstmp)
+        if (any(shape(vstmp) /= this%n_xyz)) then
+          write(*,*) 'Shape of '//trim(ap%inversion%init_model_path)//' dose not match with' //&
+                     ' shape of computational domain.'
+          stop
+        endif
         do i = 1, this%n_xyz(3)
           this%vs1d(i) = sum(vstmp(:,:,i))/(this%n_xyz(1)*this%n_xyz(2))
         enddo
         this%vs3d = vstmp
       endif
-    endif
-    if (ap%inversion%init_model_type < 2 .and. myrank == 0) then
-      do i = 1, this%n_xyz(1)
-        do j = 1, this%n_xyz(2)
-          this%vs3d(i, j, :) = this%vs1d
+      if (ap%inversion%init_model_type < 2) then
+        do i = 1, this%n_xyz(1)
+          do j = 1, this%n_xyz(2)
+            this%vs3d(i, j, :) = this%vs1d
+          enddo
         enddo
-      enddo
-    endif
-    if (myrank == 0) then
+      endif
       this%vp3d = empirical_vp(this%vs3d)
       this%rho3d = empirical_rho(this%vp3d)
     endif

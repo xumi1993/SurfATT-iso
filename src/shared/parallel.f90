@@ -56,13 +56,52 @@ module my_mpi
 
 ! main parameter module for specfem simulations
 
-  use constants, only: dp, cr
+  use shared_par
   use mpi
 
   implicit none
 
   integer :: my_local_mpi_comm_world, my_local_mpi_comm_for_bcast
 
+  interface bcast_all
+    module procedure bcast_all_ch_array, bcast_all_cr, bcast_all_dp, bcast_all_i,&
+                     bcast_all_l_array, bcast_all_singlecr, bcast_all_dp_2, bcast_all_dp_3,&
+                     bcast_all_singledp, bcast_all_singlei, bcast_all_singlel, &
+                     bcast_all_string
+  end interface
+
+  interface min_all
+    module procedure min_all_cr, min_all_dp, min_all_i
+  end interface
+
+  interface max_all
+    module procedure max_all_cr, max_all_dp, max_all_i
+  end interface
+
+  interface max_all_all
+    module procedure max_all_all_cr, max_all_all_dp, max_all_all_i
+  end interface
+
+  interface sum_all
+    module procedure sum_all_1Darray_dp, sum_all_2Darray_dp, &
+                     sum_all_3Darray_dp, sum_all_4Darray_dp, &
+                     sum_all_1Darray_i, sum_all_2Darray_i,sum_all_3Darray_i,&
+                     sum_all_cr, sum_all_dp, sum_all_i
+  end interface
+
+  interface sum_all_all
+    module procedure sum_all_all_1Darray_dp, sum_all_all_2Darray_dp,&
+                     sum_all_all_3Darray_dp, sum_all_all_4Darray_dp,&
+                     sum_all_all_cr, sum_all_all_i
+  end interface
+
+  interface send
+   module procedure send_dp, send_i
+  end interface
+
+  interface recv
+    module procedure recv_dp, recv_i
+  end interface
   contains
 !-------------------------------------------------------------------------------------------------
 !
@@ -72,12 +111,7 @@ module my_mpi
 
   subroutine init_mpi()
 
-  ! use my_mpi
-  ! use shared_parameters, only: NUMBER_OF_SIMULTANEOUS_RUNS,BROADCAST_SAME_MESH_AND_MODEL
-
-  implicit none
-
-  integer :: myrank,ier
+  integer :: ier
 
 ! initialize the MPI communicator and start the NPROCTOT MPI processes.
   call MPI_INIT(ier)
@@ -101,10 +135,17 @@ module my_mpi
   my_local_mpi_comm_world = MPI_COMM_WORLD
   ! call bcast_all_singlei(NUMBER_OF_SIMULTANEOUS_RUNS)
   ! call bcast_all_singlel(BROADCAST_SAME_MESH_AND_MODEL)
-  my_local_mpi_comm_for_bcast = MPI_COMM_NULL
+  ! my_local_mpi_comm_for_bcast = MPI_COMM_NULL
 
 ! create sub-communicators if needed, if running more than one earthquake from the same job
   ! call world_split()
+  call world_rank(myrank)
+  call world_size(mysize)
+
+  call MPI_Comm_split_type(my_local_mpi_comm_world, MPI_COMM_TYPE_SHARED, myrank, &
+                           MPI_INFO_NULL, my_local_mpi_comm_world, ier)
+  call MPI_Comm_rank(my_local_mpi_comm_world, local_rank, ier)
+  call MPI_Comm_size(my_local_mpi_comm_world, local_size, ier)
 
   end subroutine init_mpi
 
@@ -332,20 +373,20 @@ module my_mpi
 !-------------------------------------------------------------------------------------------------
 !
 
-  subroutine bcast_all_r(buffer, countval)
+  ! subroutine bcast_all_r(buffer, countval)
 
-  ! use my_mpi
+  ! ! use my_mpi
 
-  implicit none
+  ! implicit none
 
-  integer :: countval
-  real, dimension(countval) :: buffer
+  ! integer :: countval
+  ! real, dimension(countval) :: buffer
 
-  integer :: ier
+  ! integer :: ier
 
-  call MPI_BCAST(buffer,countval,MPI_REAL,0,my_local_mpi_comm_world,ier)
+  ! call MPI_BCAST(buffer,countval,MPI_REAL,0,my_local_mpi_comm_world,ier)
 
-  end subroutine bcast_all_r
+  ! end subroutine bcast_all_r
 
 !
 !-------------------------------------------------------------------------------------------------
@@ -366,6 +407,35 @@ module my_mpi
 
   end subroutine bcast_all_dp
 
+  subroutine bcast_all_dp_2(buffer, countval)
+
+  ! use my_mpi
+
+  implicit none
+
+  integer :: countval
+  double precision, dimension(:,:) :: buffer
+
+  integer :: ier
+
+  call MPI_BCAST(buffer,countval,MPI_DOUBLE_PRECISION,0,my_local_mpi_comm_world,ier)
+
+  end subroutine bcast_all_dp_2
+
+subroutine bcast_all_dp_3(buffer, countval)
+
+  ! use my_mpi
+
+  implicit none
+
+  integer :: countval
+  double precision, dimension(:,:,:) :: buffer
+
+  integer :: ier
+
+  call MPI_BCAST(buffer,countval,MPI_DOUBLE_PRECISION,0,my_local_mpi_comm_world,ier)
+
+  end subroutine bcast_all_dp_3
 !
 !-------------------------------------------------------------------------------------------------
 !
@@ -911,6 +981,20 @@ module my_mpi
 
   end subroutine sum_all_dp
 
+
+  subroutine sum_all_all_dp(sendbuf, recvbuf)
+
+  ! use my_mpi
+
+  implicit none
+
+  double precision :: sendbuf, recvbuf
+  integer :: ier
+
+  call MPI_ALLREDUCE(sendbuf,recvbuf,1,MPI_DOUBLE_PRECISION,MPI_SUM,my_local_mpi_comm_world,ier)
+
+
+  end subroutine sum_all_all_dp
 !
 !-------------------------------------------------------------------------------------------------
 !
@@ -928,6 +1012,34 @@ module my_mpi
   call MPI_REDUCE(sendbuf,recvbuf,nx,MPI_INTEGER,MPI_SUM,0,my_local_mpi_comm_world,ier)
 
   end subroutine sum_all_1Darray_i
+
+   subroutine sum_all_2Darray_i(sendbuf, recvbuf, nx, ny)
+
+  ! use my_mpi
+
+  implicit none
+
+  integer :: nx, ny
+  integer, dimension(nx,ny) :: sendbuf, recvbuf
+  integer :: ier
+
+  call MPI_REDUCE(sendbuf,recvbuf,nx*ny,MPI_INTEGER,MPI_SUM,0,my_local_mpi_comm_world,ier)
+
+  end subroutine sum_all_2Darray_i
+
+  subroutine sum_all_3Darray_i(sendbuf, recvbuf, nx, ny, nz)
+
+  ! use my_mpi
+
+  implicit none
+
+  integer :: nx, ny, nz
+  integer, dimension(nx,ny,nz) :: sendbuf, recvbuf
+  integer :: ier
+
+  call MPI_REDUCE(sendbuf,recvbuf,nx*ny*nz,MPI_INTEGER,MPI_SUM,0,my_local_mpi_comm_world,ier)
+
+  end subroutine sum_all_3Darray_i
 
   subroutine sum_all_1Darray_dp(sendbuf, recvbuf, nx)
 
@@ -957,6 +1069,26 @@ module my_mpi
 !
 !-------------------------------------------------------------------------------------------------
 !
+ subroutine sum_all_all_2Darray_dp(sendbuf, recvbuf, nx,ny)
+  integer :: nx,ny
+  double precision, dimension(nx,ny) :: sendbuf, recvbuf
+  integer :: ier
+
+  ! call MPI_ALLREDUCE(sendbuf,recvbuf,nx*ny*nz,MPI_DOUBLE_PRECISION,MPI_SUM,0,my_local_mpi_comm_world,ier)
+  call MPI_ALLREDUCE(sendbuf,recvbuf,nx*ny,MPI_DOUBLE_PRECISION,MPI_SUM,my_local_mpi_comm_world,ier)
+
+ end subroutine sum_all_all_2Darray_dp
+
+ subroutine sum_all_2Darray_dp(sendbuf, recvbuf, nx,ny)
+  integer :: nx,ny
+  double precision, dimension(nx,ny) :: sendbuf, recvbuf
+  integer :: ier
+
+  call MPI_REDUCE(sendbuf,recvbuf,nx*ny,MPI_DOUBLE_PRECISION,MPI_SUM,0,my_local_mpi_comm_world,ier)
+  ! call MPI_ALLREDUCE(sendbuf,recvbuf,nx*ny*nz,MPI_DOUBLE_PRECISION,MPI_SUM,my_local_mpi_comm_world,ier)
+
+ end subroutine sum_all_2Darray_dp
+
 
  subroutine sum_all_all_3Darray_dp(sendbuf, recvbuf, nx,ny,nz)
   integer :: nx,ny,nz

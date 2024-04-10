@@ -68,8 +68,8 @@ contains
     loc_iy(myrank+1, 2) = this%loc_iy_end
     this%loc_nx = this%loc_ix_end - this%loc_ix_start + 1
     this%loc_ny = this%loc_iy_end - this%loc_iy_start + 1
-    call sum_all_1Darray_i(loc_ix, this%glob_ix, mysize*2)
-    call sum_all_1Darray_i(loc_iy, this%glob_iy, mysize*2)
+    call sum_all(loc_ix, this%glob_ix, mysize, 2)
+    call sum_all(loc_iy, this%glob_iy, mysize, 2)
 
   end subroutine init_decomposer
 

@@ -24,7 +24,7 @@ module src_rec
   type, public :: Stations
     character(len=MAX_NAME_LEN),dimension(:), pointer  :: staname
     real(kind=dp), dimension(:), pointer               :: stla, stlo
-    integer                                                :: nsta
+    integer                                            :: nsta
     contains
     procedure :: get_sta_pos
   end type Stations
@@ -47,11 +47,12 @@ module src_rec
   end type SrcRec
 
   type(srcrec), target, public                             :: src_rec_global_ph,src_rec_global_gr
-  type(stations), target, public                           :: stations_global
+  type(Stations), target, public                           :: stations_global
   integer :: win_tt_fwd, win_vel, win_dist, win_weight, win_stla, win_stlo,&
              win_evla, win_evlo, win_periods_all, win_tt, &
              win_staname, win_evtname, win_periods_sr, win_meanvel,&
-             win_sta_name, win_sta_la, win_sta_lo
+             win_sta_name, win_sta_la, win_sta_lo, win_glob_sta,&
+             win_glob_stla, win_glob_stlo
 
 contains
   subroutine read_src_rec_file(this, type)
@@ -78,8 +79,8 @@ contains
       this%nfield = srr%nfield
     endif
     call synchronize_all()
-    call bcast_all_singlei(this%npath)
-    call bcast_all_singlei(this%nfield)
+    call bcast_all(this%npath)
+    call bcast_all(this%nfield)
     
     ! allocate memory
     ! this%tt_fwd = zeros(this%npath)
@@ -128,29 +129,30 @@ contains
     ! use stdlib_sorting, only: sort
   
     class(SrcRec), intent(inout) :: this
-    real(kind=dp), dimension(this%npath) :: temp
+    real(kind=dp), dimension(:), allocatable :: temp
     integer :: i, count
 
     count = 1
-    temp(1) = this%periods_all(1)
     if (myrank == 0) then
+      call append(temp, this%periods_all(1))
       do i = 2, this%npath
         if (.not. any(temp == this%periods_all(i))) then
           count = count + 1
-          temp(count) = this%periods_all(i)
+          call append(temp, this%periods_all(i))
         endif
       enddo
       this%nperiod = count
       temp(1:count) = sort(temp(1:count))
     endif
     call synchronize_all()
-    call bcast_all_singlei(this%nperiod)
+    call bcast_all(this%nperiod)
     call prepare_shm_array_dp_1d(this%periods, this%nperiod, win_periods_sr)
     if (myrank == 0) then
       this%periods = temp(1:count)
       if (this%periods(this%nperiod)*1.4 > ap%domain%depth(2)) then
         call write_log('the depth of the model smaller than 1.4 * maximum period',2,this%module)
       endif
+      deallocate(temp)
     endif
     call synchronize_all()
 
@@ -207,7 +209,7 @@ contains
       this%stations%nsta = count
     endif
     call synchronize_all()
-    call bcast_all_singlei(this%stations%nsta)
+    call bcast_all(this%stations%nsta)
     call prepare_shm_array_ch_1d(this%stations%staname, this%stations%nsta, MAX_NAME_LEN, win_staname)
     call prepare_shm_array_dp_1d(this%stations%stla, this%stations%nsta, win_stla)
     call prepare_shm_array_dp_1d(this%stations%stlo, this%stations%nsta, win_stlo)
@@ -241,7 +243,7 @@ contains
     endif
     call synchronize_all()
     if (myrank > 0) allocate(this%meanvel(this%nperiod))
-    call bcast_all_dp(this%meanvel, this%nperiod)
+    call bcast_all(this%meanvel, this%nperiod)
     call synchronize_all()
   end subroutine get_mean_vel
 
@@ -332,61 +334,43 @@ contains
   end subroutine get_sta_pos
 
   subroutine merge_sta()
-    integer :: i, j, n, nph, ngr
-    ! character(len=MAX_NAME_LEN), dimension(:), allocatable :: compsta
+    integer :: i, j, nsta, nph, ngr
+    character(len=MAX_NAME_LEN), dimension(:), allocatable :: tmpsta
     integer,dimension(:), allocatable :: idx
+    real(kind=dp), dimension(:), allocatable :: tmpla, tmplo
 
-    if (myrank == 0) then
-      nph = src_rec_global_ph%stations%nsta
-      ngr = src_rec_global_gr%stations%nsta
-      if (all(ap%data%vel_type)) then
-        n = 0
-        allocate(idx(nph))
-        do i = 1, nph
-          if (.not. any(src_rec_global_gr%stations%staname&
-              ==src_rec_global_ph%stations%staname(i))) then
-              n = n + 1
-              idx(n) = i
+    if (all(ap%data%vel_type)) then
+      if (myrank == 0) then
+        nph = src_rec_global_ph%stations%nsta
+        ngr = src_rec_global_gr%stations%nsta
+        tmpla = src_rec_global_ph%stations%stla
+        tmplo = src_rec_global_ph%stations%stlo
+        tmpsta = src_rec_global_ph%stations%staname
+        do i = 1, ngr
+          if (.not. any(tmpsta == src_rec_global_gr%stations%staname(i))) then
+            call append(tmpsta, src_rec_global_gr%stations%staname(i))
+            call append(tmpla, src_rec_global_gr%stations%stla(i))
+            call append(tmplo, src_rec_global_gr%stations%stlo(i))
           endif
         enddo
-        if (n/=0) then
-          stations_global%nsta = ngr+n
-          allocate(stations_global%staname(ngr+n),stations_global%stla(ngr+n),&
-                   stations_global%stlo(ngr+n))
-          stations_global%staname(1:ngr) = src_rec_global_gr%stations%staname(1:ngr)
-          stations_global%stla(1:ngr) = src_rec_global_gr%stations%stla(1:ngr)
-          stations_global%stlo(1:ngr) = src_rec_global_gr%stations%stlo(1:ngr)
-          do i = 1, n
-            stations_global%staname(ngr+i) = src_rec_global_ph%stations%staname(idx(i))
-            stations_global%stla(ngr+i) = src_rec_global_ph%stations%stla(idx(i))
-            stations_global%stlo(ngr+i) = src_rec_global_ph%stations%stlo(idx(i))
-          enddo
-        else
-          stations_global%nsta = ngr
-          allocate(stations_global%staname(ngr), stations_global%stla(ngr),&
-                   stations_global%stlo(ngr))
-          stations_global%staname(1:ngr) = src_rec_global_gr%stations%staname(1:ngr)
-          stations_global%stla(1:ngr) = src_rec_global_gr%stations%stla(1:ngr)
-          stations_global%stlo(1:ngr) = src_rec_global_gr%stations%stlo(1:ngr)
-        endif
-      endif ! (all(ap%data%vel_type)) 
-    endif ! myrank==0
-    call synchronize_all()
-    if (all(ap%data%vel_type)) then
-      call bcast_all_singlei(stations_global%nsta)
-      if (myrank > 0) then
-        allocate(stations_global%staname(stations_global%nsta),&
-                 stations_global%stla(stations_global%nsta),&
-                 stations_global%stlo(stations_global%nsta))
+        stations_global%nsta = size(tmpla)
+      endif ! myrank==0
+      call synchronize_all()
+      call bcast_all(stations_global%nsta)
+      call prepare_shm_array_dp_1d(stations_global%stla, stations_global%nsta, win_glob_stla)
+      call prepare_shm_array_dp_1d(stations_global%stlo, stations_global%nsta, win_glob_stlo)
+      call prepare_shm_array_ch_1d(stations_global%staname,stations_global%nsta,&
+                                   MAX_NAME_LEN, win_glob_sta)
+      if (myrank == 0) then
+        stations_global%staname = tmpsta
+        stations_global%stla = tmpla
+        stations_global%stlo = tmplo
       endif
-      call bcast_all_ch_array(stations_global%staname,&
-          stations_global%nsta,MAX_NAME_LEN)
-      call bcast_all_dp(stations_global%stla, stations_global%nsta)
-      call bcast_all_dp(stations_global%stlo, stations_global%nsta)
     elseif (ap%data%vel_type(1)) then
       stations_global = src_rec_global_ph%stations
     elseif (ap%data%vel_type(2)) then
       stations_global = src_rec_global_gr%stations
-    endif
+    endif !     
+    call synchronize_all()
   end subroutine merge_sta
 end module

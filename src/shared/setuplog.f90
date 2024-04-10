@@ -9,12 +9,11 @@ contains
   subroutine setuplog(log_level)
     integer :: stat, log_level
 
-    ! if (myrank == 0) then
-    call logger%add_log_file(log_fname, LID, stat=stat)      
-    call logger%configure(level=log_level, time_stamp=.true.)
-    ! end
-    call bcast_all_singlei(LID)
-    
+    if (myrank == 0) then
+      call logger%add_log_file(log_fname, LID, stat=stat)      
+      call logger%configure(level=log_level, time_stamp=.true.)
+    endif
+    call synchronize_all()    
   end subroutine setuplog
 
   subroutine write_log(msg, level, module_name)
@@ -50,7 +49,7 @@ contains
       level_msg = 'ERROR'
     endif
 
-    if (myrank == 0) then
+    if (myrank == 0 .and. level >= loglevel) then
       call logger % log_message( msg,                  &
                                 module = module_name,  &
                                 prefix = trim(level_msg) )
