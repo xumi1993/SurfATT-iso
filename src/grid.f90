@@ -86,11 +86,11 @@ module grid
   subroutine get_topo(this)
     class(att_grid), intent(inout) :: this
     type(att_topo) :: at
-    real(kind=dp), dimension(:), allocatable :: tmp, periods
+    real(kind=dp), dimension(:), allocatable :: tmp
     real(kind=dp), dimension(:,:), allocatable :: tmpto, fx, fy
     real(kind=dp) :: sigma
     character(len=MAX_STRING_LEN) :: name
-    integer :: win_topo, igr, ip, ix, iy, istart, iend
+    integer :: igr, ip, ix, iy, istart, iend
 
     if (ap%topo%is_consider_topo) then
       call write_log("Reading topography file",1, this%module)
@@ -100,7 +100,7 @@ module grid
       call scatter_all_i(this%nperiod, mysize, myrank, istart, iend)
       if (myrank == 0) then
         call fwdsurf1d(am%vs1d,ap%data%iwave,&
-                     igr,this%periods,&
+                     this%igr,this%periods,&
                      am%zgrids,tmp)
       endif
       call synchronize_all()
