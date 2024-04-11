@@ -90,7 +90,7 @@ module grid
     real(kind=dp), dimension(:,:), allocatable :: tmpto, fx, fy
     real(kind=dp) :: sigma
     character(len=MAX_STRING_LEN) :: name
-    integer :: igr, ip, ix, iy, istart, iend
+    integer :: ip, ix, iy, istart, iend
 
     if (ap%topo%is_consider_topo) then
       call write_log("Reading topography file",1, this%module)
