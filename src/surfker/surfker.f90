@@ -3,7 +3,7 @@ module surfker
   use shared_par
   use RayleighWaveKernel
   use utils
-  use setup_att_log
+  ! use setup_att_log
   implicit none
   integer, parameter :: iflsph=1, mode=1
     character(len=MAX_STRING_LEN) :: msg, thismodule='SURFKER'

@@ -61,7 +61,7 @@ module my_mpi
 
   implicit none
 
-  integer :: my_local_mpi_comm_world, my_local_mpi_comm_for_bcast
+  integer :: my_local_mpi_comm_world, my_node_mpi_comm_world, my_local_mpi_comm_for_bcast
 
   interface bcast_all
     module procedure bcast_all_ch_array, bcast_all_cr, bcast_all_dp, bcast_all_i,&
@@ -96,12 +96,18 @@ module my_mpi
   end interface
 
   interface send
-   module procedure send_dp, send_i
+   module procedure send_dp, send_i, send_ch_array
   end interface
 
   interface recv
-    module procedure recv_dp, recv_i
+    module procedure recv_dp, recv_i, recv_ch_array
   end interface
+
+  interface sync_from_main_rank
+    module procedure sync_from_main_rank_ch, sync_from_main_rank_dp, sync_from_main_rank_i,&
+                     sync_from_main_rank_dp_2, sync_from_main_rank_dp_3, sync_from_main_rank_dp_4
+  end interface
+
   contains
 !-------------------------------------------------------------------------------------------------
 !
@@ -112,6 +118,7 @@ module my_mpi
   subroutine init_mpi()
 
   integer :: ier
+  integer, dimension(:,:), allocatable :: rank_map_loc
 
 ! initialize the MPI communicator and start the NPROCTOT MPI processes.
   call MPI_INIT(ier)
@@ -143,10 +150,17 @@ module my_mpi
   call world_size(mysize)
 
   call MPI_Comm_split_type(my_local_mpi_comm_world, MPI_COMM_TYPE_SHARED, myrank, &
-                           MPI_INFO_NULL, my_local_mpi_comm_world, ier)
-  call MPI_Comm_rank(my_local_mpi_comm_world, local_rank, ier)
-  call MPI_Comm_size(my_local_mpi_comm_world, local_size, ier)
+                           MPI_INFO_NULL, my_node_mpi_comm_world, ier)
+  call MPI_Comm_rank(my_node_mpi_comm_world, local_rank, ier)
+  call MPI_Comm_size(my_node_mpi_comm_world, local_size, ier)
 
+  allocate(rank_map_loc(mysize, 2), rank_map(mysize, 2))
+  rank_map_loc = 0
+
+  rank_map_loc(myrank+1, 1) = myrank
+  rank_map_loc(myrank+1, 2) = local_rank
+  call sum_all(rank_map_loc, rank_map, mysize, 2)
+  
   end subroutine init_mpi
 
 !
@@ -1298,6 +1312,22 @@ subroutine bcast_all_dp_3(buffer, countval)
 
   end subroutine recvv_cr
 
+  subroutine recv_ch_array(recvbuf, recvcount, nlen, dest, recvtag)
+
+  ! use my_mpi
+
+  implicit none
+
+  integer :: dest,recvtag,nlen
+  integer :: recvcount
+  character(len=nlen),dimension(recvcount):: recvbuf
+
+  integer :: ier
+
+  call MPI_RECV(recvbuf,recvcount,MPI_CHARACTER*nlen,dest,recvtag, &
+                my_local_mpi_comm_world,MPI_STATUS_IGNORE,ier)
+
+  end subroutine recv_ch_array
 !
 !-------------------------------------------------------------------------------------------------
 !
@@ -1396,6 +1426,23 @@ subroutine bcast_all_dp_3(buffer, countval)
   call MPI_SEND(sendbuf,sendcount,MPI_DOUBLE_PRECISION,dest,sendtag,my_local_mpi_comm_world,ier)
 
   end subroutine send_dp
+
+
+  subroutine send_ch_array(sendbuf, sendcount, nlen, dest, sendtag)
+
+  ! use my_mpi
+
+  implicit none
+
+  integer :: dest,sendtag,nlen
+  integer :: sendcount
+  character(len=nlen),dimension(sendcount):: sendbuf
+
+  integer :: ier
+
+  call MPI_SEND(sendbuf,sendcount,MPI_CHARACTER*nlen,dest,sendtag,my_local_mpi_comm_world,ier)
+
+  end subroutine send_ch_array
 
 !
 !-------------------------------------------------------------------------------------------------
@@ -1854,22 +1901,133 @@ subroutine bcast_all_dp_3(buffer, countval)
 
   end subroutine scatter_all_i
 
+  ! 
+  subroutine sync_from_main_rank_dp(buffer, countval)
+    integer, intent(in) :: countval
+    double precision, dimension(:), intent(inout) :: buffer
+    integer :: tag = 1000, i
+
+    if (myrank == 0) then
+      do i = 2, mysize
+        if (rank_map(i, 2) == 0) then
+          call send(buffer, countval, rank_map(i, 1), tag)
+        endif
+      enddo
+    elseif (local_rank == 0) then
+      call recv(buffer, countval, 0, tag)
+    endif
+    call synchronize_all()
+    
+  end subroutine sync_from_main_rank_dp
+
+
+  subroutine sync_from_main_rank_dp_2(buffer, nx, ny)
+    integer, intent(in) :: nx, ny
+    double precision, dimension(:,:), intent(inout) :: buffer
+    integer :: tag = 1000, i
+
+    if (myrank == 0) then
+      do i = 2, mysize
+        if (rank_map(i, 2) == 0) then
+          call send_dp(buffer, nx*ny, rank_map(i, 1), tag)
+        endif
+      enddo
+    elseif (local_rank == 0) then
+      call recv_dp(buffer, nx*ny, 0, tag)
+    endif
+    call synchronize_all()
+    
+  end subroutine sync_from_main_rank_dp_2
+
+
+  subroutine sync_from_main_rank_dp_3(buffer, nx, ny, nz)
+    integer, intent(in) :: nx, ny, nz
+    double precision, dimension(:,:,:), intent(inout) :: buffer
+    integer :: tag = 1000, i
+
+    if (myrank == 0) then
+      do i = 2, mysize
+        if (rank_map(i, 2) == 0) then
+          call send_dp(buffer, nx*ny*nz, rank_map(i, 1), tag)
+        endif
+      enddo
+    elseif (local_rank == 0) then
+      call recv_dp(buffer, nx*ny*nz, 0, tag)
+    endif
+    call synchronize_all()
+    
+  end subroutine sync_from_main_rank_dp_3
+
+
+  subroutine sync_from_main_rank_dp_4(buffer, n1, n2, n3, n4)
+    integer, intent(in) :: n1, n2, n3, n4
+    double precision, dimension(:,:,:,:), intent(inout) :: buffer
+    integer :: tag = 1000, i
+
+    if (myrank == 0) then
+      do i = 2, mysize
+        if (rank_map(i, 2) == 0) then
+          call send_dp(buffer, n1*n2*n3*n4, rank_map(i, 1), tag)
+        endif
+      enddo
+    elseif (local_rank == 0) then
+      call recv_dp(buffer, n1*n2*n3*n4, 0, tag)
+    endif
+    call synchronize_all()
+    
+  end subroutine sync_from_main_rank_dp_4
+
+
+  subroutine sync_from_main_rank_i(buffer, countval)
+    integer, intent(in) :: countval
+    integer, dimension(:), intent(inout) :: buffer
+    integer :: tag = 1000, i
+
+    if (myrank == 0) then
+      do i = 2, mysize
+        if (rank_map(i, 2) == 0) then
+          call send(buffer, countval, rank_map(i, 1), tag)
+        endif
+      enddo
+    elseif (local_rank == 0) then
+      call recv(buffer, countval, 0, tag)
+    endif
+  end subroutine sync_from_main_rank_i
+
+  subroutine sync_from_main_rank_ch(buffer, countval, nlen)
+    integer, intent(in) :: countval, nlen
+    character(len=nlen), dimension(:), intent(inout) :: buffer
+    integer :: tag = 1000, i
+
+    if (myrank == 0) then
+      do i = 2, mysize
+        if (rank_map(i, 2) == 0) then
+          call send(buffer, countval, nlen, rank_map(i, 1), tag)
+        endif
+      enddo
+    elseif (local_rank == 0) then
+      call recv(buffer, countval, nlen, 0, tag)
+    endif
+    call synchronize_all()
+    
+  end subroutine sync_from_main_rank_ch
+
   ! -------------------------------------------------------------------------------------------------
   subroutine prepare_shm_array_dp_1d(buffer, n_elem, win)
     USE, INTRINSIC :: ISO_C_BINDING
     double precision, dimension(:), pointer :: buffer
     integer :: ierr, istat,n_elem,n
     integer(kind=MPI_ADDRESS_KIND) :: size
-    integer :: win, real_size, myrank
+    integer :: win, real_size
     type(C_PTR) :: c_window_ptr
     
-    call world_rank(myrank)
+    ! call world_rank(myrank)
     n = n_elem
-    if(myrank /= 0) n = 0
+    if(local_rank /= 0) n = 0
     CALL MPI_Type_size(MPI_DOUBLE_PRECISION, real_size, ierr)
     size = n * real_size
     call MPI_Win_allocate_shared(size, real_size, MPI_INFO_NULL, MPI_COMM_WORLD, c_window_ptr, win, ierr)
-    if (myrank /= 0) then
+    if (local_rank /= 0) then
       call MPI_Win_shared_query(win, 0, size, real_size, c_window_ptr, ierr)
     endif
     CALL C_F_POINTER(c_window_ptr, buffer, SHAPE = [n_elem])
@@ -1882,16 +2040,16 @@ subroutine bcast_all_dp_3(buffer, countval)
     double precision, dimension(:,:), pointer :: buffer
     integer :: ierr,nx,ny,n
     integer(kind=MPI_ADDRESS_KIND) :: size
-    integer :: win, real_size, myrank
+    integer :: win, real_size
     type(C_PTR) :: c_window_ptr
     
-    call world_rank(myrank)
+    ! call world_rank(myrank)
     n = nx*ny
-    if(myrank /= 0) n = 0
+    if(local_rank /= 0) n = 0
     CALL MPI_Type_size(MPI_DOUBLE_PRECISION, real_size, ierr)
     size = n * real_size
     call MPI_Win_allocate_shared(size, real_size, MPI_INFO_NULL, MPI_COMM_WORLD, c_window_ptr, win, ierr)
-    if (myrank /= 0) then
+    if (local_rank /= 0) then
       call MPI_Win_shared_query(win, 0, size, real_size, c_window_ptr, ierr)
     endif
     CALL C_F_POINTER(c_window_ptr, buffer, SHAPE=[nx, ny])
@@ -1904,16 +2062,15 @@ subroutine bcast_all_dp_3(buffer, countval)
     integer, dimension(:,:), pointer :: buffer
     integer :: ierr,nx,ny,n
     integer(kind=MPI_ADDRESS_KIND) :: size
-    integer :: win, int_size, myrank
+    integer :: win, int_size
     type(C_PTR) :: c_window_ptr
     
-    call world_rank(myrank)
     n = nx*ny
-    if(myrank /= 0) n = 0
+    if(local_rank /= 0) n = 0
     CALL MPI_Type_size(MPI_INTEGER, int_size, ierr)
     size = n * int_size
     call MPI_Win_allocate_shared(size, int_size, MPI_INFO_NULL, MPI_COMM_WORLD, c_window_ptr, win, ierr)
-    if (myrank /= 0) then
+    if (local_rank /= 0) then
       call MPI_Win_shared_query(win, 0, size, int_size, c_window_ptr, ierr)
     endif
     CALL C_F_POINTER(c_window_ptr, buffer, SHAPE=[nx, ny])
@@ -1926,16 +2083,15 @@ subroutine bcast_all_dp_3(buffer, countval)
     double precision, dimension(:,:,:), pointer :: buffer
     integer :: ierr,nx,ny,nz,n
     integer(kind=MPI_ADDRESS_KIND) :: size
-    integer :: win, real_size, myrank
+    integer :: win, real_size
     type(C_PTR) :: c_window_ptr
     
-    call world_rank(myrank)
     n = nx*ny*nz
-    if(myrank /= 0) n = 0
+    if(local_rank /= 0) n = 0
     CALL MPI_Type_size(MPI_DOUBLE_PRECISION, real_size, ierr)
     size = n * real_size
     call MPI_Win_allocate_shared(size, real_size, MPI_INFO_NULL, MPI_COMM_WORLD, c_window_ptr, win, ierr)
-    if (myrank /= 0) then
+    if (local_rank /= 0) then
       call MPI_Win_shared_query(win, 0, size, real_size, c_window_ptr, ierr)
     endif
     CALL C_F_POINTER(c_window_ptr, buffer, SHAPE=[nx, ny, nz])
@@ -1948,16 +2104,15 @@ subroutine bcast_all_dp_3(buffer, countval)
     double precision, dimension(:,:,:,:), pointer :: buffer
     integer :: ierr,n1,n2,n3,n4,n
     integer(kind=MPI_ADDRESS_KIND) :: size
-    integer :: win, real_size, myrank
+    integer :: win, real_size
     type(C_PTR) :: c_window_ptr
     
-    call world_rank(myrank)
     n = n1*n2*n3*n4
-    if(myrank /= 0) n = 0
+    if(local_rank /= 0) n = 0
     CALL MPI_Type_size(MPI_DOUBLE_PRECISION, real_size, ierr)
     size = n * real_size
     call MPI_Win_allocate_shared(size, real_size, MPI_INFO_NULL, MPI_COMM_WORLD, c_window_ptr, win, ierr)
-    if (myrank /= 0) then
+    if (local_rank /= 0) then
       call MPI_Win_shared_query(win, 0, size, real_size, c_window_ptr, ierr)
     endif
     CALL C_F_POINTER(c_window_ptr, buffer, SHAPE=[n1,n2,n3,n4])
@@ -1970,16 +2125,15 @@ subroutine bcast_all_dp_3(buffer, countval)
     integer :: ierr, istat,n_elem,n,nlen
     character(len=nlen), dimension(:), pointer :: buffer
     integer(kind=MPI_ADDRESS_KIND) :: size
-    integer :: win, char_size, myrank
+    integer :: win, char_size
     type(C_PTR) :: c_window_ptr
     
-    call world_rank(myrank)
     n = n_elem*nlen
-    if(myrank /= 0) n = 0
+    if(local_rank /= 0) n = 0
     CALL MPI_Type_size(MPI_CHARACTER, char_size, ierr)
     size = n * char_size
     call MPI_Win_allocate_shared(size, char_size, MPI_INFO_NULL, MPI_COMM_WORLD, c_window_ptr, win, ierr)
-    if (myrank /= 0) then
+    if (local_rank /= 0) then
       call MPI_Win_shared_query(win, 0, size, char_size, c_window_ptr, ierr)
     endif
     CALL C_F_POINTER(c_window_ptr, buffer, SHAPE = [n_elem])

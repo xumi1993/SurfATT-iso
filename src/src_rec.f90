@@ -73,7 +73,7 @@ contains
 
     call write_log('Reading source receiver file: '//trim(fname),1,this%module)
 
-    if (myrank == 0) then
+    if (local_rank == 0) then
       call srr%read_raw_src_rec_file(fname)
       this%npath = srr%npath
       this%nfield = srr%nfield
@@ -98,7 +98,7 @@ contains
     call prepare_shm_array_ch_1d(this%evtname, this%npath, MAX_NAME_LEN, win_evtname)
     call prepare_shm_array_ch_1d(this%header, this%nfield, MAX_NAME_LEN, win_staname)
 
-    if (myrank == 0) then
+    if (local_rank == 0) then
       this%vel = srr%vel
       this%stla = srr%stla
       this%stlo = srr%stlo
@@ -133,7 +133,7 @@ contains
     integer :: i, count
 
     count = 1
-    if (myrank == 0) then
+    if (local_rank == 0) then
       call append(temp, this%periods_all(1))
       do i = 2, this%npath
         if (.not. any(temp == this%periods_all(i))) then
@@ -147,7 +147,7 @@ contains
     call synchronize_all()
     call bcast_all(this%nperiod)
     call prepare_shm_array_dp_1d(this%periods, this%nperiod, win_periods_sr)
-    if (myrank == 0) then
+    if (local_rank == 0) then
       this%periods = temp(1:count)
       if (this%periods(this%nperiod)*1.4 > ap%domain%depth(2)) then
         call write_log('the depth of the model smaller than 1.4 * maximum period',2,this%module)
@@ -213,7 +213,7 @@ contains
     call prepare_shm_array_ch_1d(this%stations%staname, this%stations%nsta, MAX_NAME_LEN, win_staname)
     call prepare_shm_array_dp_1d(this%stations%stla, this%stations%nsta, win_stla)
     call prepare_shm_array_dp_1d(this%stations%stlo, this%stations%nsta, win_stlo)
-    if (myrank == 0) then
+    if (local_rank == 0) then
       this%stations%staname = temp(1:count)
       this%stations%stla = templa(1:count)
       this%stations%stlo = templo(1:count)
@@ -226,9 +226,9 @@ contains
     class(SrcRec), intent(inout) :: this
     integer :: i, n, j
     real(kind=dp) :: sumval
-
-    if (myrank == 0) then
-      allocate(this%meanvel(this%nperiod))
+    
+    call prepare_shm_array_dp_1d(this%meanvel, this%nperiod, win_meanvel)
+    if (local_rank == 0) then
       do i = 1, this%nperiod
         sumval = 0.
         n = 0
@@ -241,9 +241,6 @@ contains
         this%meanvel(i) = sumval/n
       enddo
     endif
-    call synchronize_all()
-    if (myrank > 0) allocate(this%meanvel(this%nperiod))
-    call bcast_all(this%meanvel, this%nperiod)
     call synchronize_all()
   end subroutine get_mean_vel
 
@@ -366,6 +363,9 @@ contains
         stations_global%stla = tmpla
         stations_global%stlo = tmplo
       endif
+      call sync_from_main_rank(stations_global%staname, stations_global%nsta, MAX_NAME_LEN)
+      call sync_from_main_rank(stations_global%stla, stations_global%nsta)
+      call sync_from_main_rank(stations_global%stlo, stations_global%nsta)
     elseif (ap%data%vel_type(1)) then
       stations_global = src_rec_global_ph%stations
     elseif (ap%data%vel_type(2)) then

@@ -31,8 +31,8 @@ program surfatt_cb_fwd
 
   ! initialize MPI
   call init_mpi()
-  call world_rank(myrank)
-  call world_size(mysize)
+  ! call world_rank(myrank)
+  ! call world_size(mysize)
 
   ! read command line arguments
   call argparse_cb_fwd(fname, ncb, pert, hmarg, anom_size)

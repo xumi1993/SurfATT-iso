@@ -116,6 +116,10 @@ module model
       this%rho3d = empirical_rho(this%vp3d)
     endif
     call synchronize_all()
+    call sync_from_main_rank(this%vs3d, this%n_xyz(1), this%n_xyz(2), this%n_xyz(3))
+    call sync_from_main_rank(this%vp3d, this%n_xyz(1), this%n_xyz(2), this%n_xyz(3))
+    call sync_from_main_rank(this%rho3d, this%n_xyz(1), this%n_xyz(2), this%n_xyz(3))
+    call sync_from_main_rank(this%vs1d, this%n_xyz(3))
   end subroutine get_init_model
 
   subroutine get_inv_grids(this)
@@ -281,7 +285,10 @@ module model
       this%vp3d = empirical_vp(this%vs3d)
       this%rho3d = empirical_rho(this%vp3d)
     endif
-    call synchronize_all()  
+    call synchronize_all()
+    call sync_from_main_rank(this%vs3d, this%n_xyz(1), this%n_xyz(2), this%n_xyz(3))
+    call sync_from_main_rank(this%vp3d, this%n_xyz(1), this%n_xyz(2), this%n_xyz(3))
+    call sync_from_main_rank(this%rho3d, this%n_xyz(1), this%n_xyz(2), this%n_xyz(3))
   end subroutine add_pert
 
   subroutine write_model(this, subname)

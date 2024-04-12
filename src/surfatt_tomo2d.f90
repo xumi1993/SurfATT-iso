@@ -33,8 +33,8 @@ program surfatt_tomo2d
 
   ! initialize MPI
   call init_mpi()
-  call world_rank(myrank)
-  call world_size(mysize)
+  ! call world_rank(myrank)
+  ! call world_size(mysize)
 
   ! read command line arguments
   call argparse_tomo2d(fname, isfwd, ncb, pert_vel, hmarg)

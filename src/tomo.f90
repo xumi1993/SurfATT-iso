@@ -226,6 +226,9 @@ contains
       call write_tmp_model()
     endif
     call synchronize_all()
+    call sync_from_main_rank(am%vs3d, am%n_xyz(1), am%n_xyz(2), am%n_xyz(3))
+    call sync_from_main_rank(am%vp3d, am%n_xyz(1), am%n_xyz(2), am%n_xyz(3))
+    call sync_from_main_rank(am%rho3d, am%n_xyz(1), am%n_xyz(2), am%n_xyz(3))
   end subroutine steepest_descent
 
   subroutine line_search(this)
@@ -268,21 +271,27 @@ contains
       call write_tmp_model()
     endif
     call synchronize_all()
+    call sync_from_main_rank(am%vs3d, am%n_xyz(1), am%n_xyz(2), am%n_xyz(3))
+    call sync_from_main_rank(am%vp3d, am%n_xyz(1), am%n_xyz(2), am%n_xyz(3))
+    call sync_from_main_rank(am%rho3d, am%n_xyz(1), am%n_xyz(2), am%n_xyz(3))
   end subroutine line_search
 
   subroutine prepare_fwd_linesearch()
     ! class(att_tomo), intent(inout) :: this
     real(kind=dp) :: max_gk
+    real(kind=dp), dimension(:,:,:), allocatable :: gradient_ls
 
     if (myrank == 0) then
       max_gk = maxval(abs(gradient_s))
-      gradient_s = -updatemax * gradient_s / max_gk
-      am%vs3d_opt = am%vs3d * (1 + gradient_s)
+      gradient_ls = -updatemax * gradient_s / max_gk
+      am%vs3d_opt = am%vs3d * (1 + gradient_ls)
       am%vp3d_opt = empirical_vp(am%vs3d_opt)
       am%rho3d_opt = empirical_rho(am%vp3d_opt)    
     endif
     call synchronize_all()
-    
+    call sync_from_main_rank(am%vs3d_opt, am%n_xyz(1), am%n_xyz(2), am%n_xyz(3))
+    call sync_from_main_rank(am%vp3d_opt, am%n_xyz(1), am%n_xyz(2), am%n_xyz(3))
+    call sync_from_main_rank(am%rho3d_opt, am%n_xyz(1), am%n_xyz(2), am%n_xyz(3))
   end subroutine prepare_fwd_linesearch
 
   subroutine write_tmp_model()

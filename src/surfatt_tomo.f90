@@ -31,8 +31,8 @@ program surfatt_tomo
 
   ! initialize MPI
   call init_mpi()
-  call world_rank(myrank)
-  call world_size(mysize)
+  ! call world_rank(myrank)
+  ! call world_size(mysize)
 
   call cpu_time(t0)
   ! read command line arguments

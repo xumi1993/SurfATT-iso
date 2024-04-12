@@ -27,6 +27,7 @@ module shared_par
 
   integer :: myrank, mysize
   integer :: local_rank, local_size
+  integer, dimension(:,:), allocatable :: rank_map
   integer :: LID
   integer :: loglevel
   real(kind=dp), dimension(:,:,:), allocatable :: gradient_s

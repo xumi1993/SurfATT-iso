@@ -80,7 +80,7 @@ contains
     iperiods = zeros(this%sr%nperiod)
     isrcs = zeros(this%sr%npath, 2)
     this%nsrc = 0
-    if (myrank == 0) then
+    if (local_rank == 0) then
       do j = 1, this%sr%stations%nsta
         if (any(this%sr%evtname==this%sr%stations%staname(j))) then  
           call this%sr%get_periods_by_src(this%sr%stations%staname(j), iperiods, np)
@@ -98,7 +98,7 @@ contains
     call synchronize_all()
     call bcast_all(this%nsrc)
     call prepare_shm_array_i_2d(this%isrcs, this%nsrc, 2, win_isrcs)
-    if (myrank == 0) this%isrcs(1:this%nsrc, :) = isrcs(1:this%nsrc, :)
+    if (local_rank == 0) this%isrcs(1:this%nsrc, :) = isrcs(1:this%nsrc, :)
     call synchronize_all()
     call scatter_all_i(this%nsrc,mysize,myrank,this%istart,this%iend)
   end subroutine att_scatter_src_gather
@@ -108,7 +108,7 @@ contains
 
     this%adj_s_local = 0._dp
     this%adj_density_local = 0._dp
-    if (myrank == 0) then
+    if (local_rank == 0) then
       this%sr%tt_fwd = 0._dp
       this%adj_s = 0._dp
       this%adj_density = 0._dp
@@ -218,6 +218,9 @@ contains
     call amd%collect_sen(loc_sen_vsRc, loc_sen_vpRc, loc_sen_rhoRc,&
                          this%sen_vsRc, this%sen_vpRc, this%sen_rhoRc)
     call synchronize_all()
+    call sync_from_main_rank(this%sen_vsRc, this%sr%nperiod, am%n_xyz(1), am%n_xyz(2), am%n_xyz(3))
+    call sync_from_main_rank(this%sen_vpRc, this%sr%nperiod, am%n_xyz(1), am%n_xyz(2), am%n_xyz(3))
+    call sync_from_main_rank(this%sen_rhoRc, this%sr%nperiod, am%n_xyz(1), am%n_xyz(2), am%n_xyz(3))
   end subroutine depthkernel
 
   subroutine combine_kernels(this)
@@ -248,6 +251,8 @@ contains
       this%ker_beta = this%ker_beta / this%chi0
     endif
     call synchronize_all()
+    call sync_from_main_rank(this%ker_beta, am%n_xyz(1), am%n_xyz(2), am%n_xyz(3))
+    call sync_from_main_rank(this%ker_density, am%n_xyz(1), am%n_xyz(2), am%n_xyz(3))
   end subroutine combine_kernels
 
   subroutine post_processing_for_kernel(this)
