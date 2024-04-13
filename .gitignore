@@ -31,3 +31,4 @@ pbs_*
 benchmark_*
 slurm-*
 slurm_*
+fort.*

@@ -88,8 +88,8 @@ module model
     call prepare_shm_array_dp_1d(this%vs1d, this%n_xyz(3), win_vs1d)
     ! this%vs1d = linspace(ap%inversion%vel_range(1), ap%inversion%vel_range(2), this%n_xyz(3))
     if (myrank == 0) then
+      this%vs1d = linspace(ap%inversion%vel_range(1), ap%inversion%vel_range(2), this%n_xyz(3))
       if (ap%inversion%init_model_type == 0) then
-        this%vs1d = linspace(ap%inversion%vel_range(1), ap%inversion%vel_range(2), this%n_xyz(3))
       elseif (ap%inversion%init_model_type == 1) then
         call this%inv1d(ap%inversion%niter, this%vs1d, niter, misfits)
       elseif (ap%inversion%init_model_type == 2) then

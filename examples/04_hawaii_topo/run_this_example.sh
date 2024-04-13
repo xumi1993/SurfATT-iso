@@ -15,4 +15,4 @@ gmt grdcut @earth_relief_01m -R-157/-152/18/21 -Ghawaii.nc
 ../../bin/surfatt_rotate_topo -i hawaii.nc -a $angle -c $pos_str -x -0.75/0.8 -y -0.75/1 -o hawaii_rotated.nc
 
 # inversion 
-mpirun --oversubscribe -np $NPROC ../../bin/surfatt_tomo -i input_params.yml
+mpirun -np $NPROC ../../bin/surfatt_tomo -i input_params.yml
