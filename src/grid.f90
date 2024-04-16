@@ -107,7 +107,7 @@ module grid
       call bcast_all_dp(tmp, this%nperiod)
       if (iend - istart >= 0) then
         do ip = istart, iend
-          sigma = tmp(ip) * this%periods(ip) * ap%topo%wavelen_factor*km2deg / (2.0_dp * 3.14159_dp)
+          sigma = tmp(ip) * this%periods(ip) * ap%topo%wavelen_factor*km2deg / (2.0_dp * pi)
           tmpto = at%smooth(sigma)
           this%topo_angle(ip,:,:) = at%calc_dip_angle(tmpto)
           call gradient_2_geo(tmpto, am%xgrids, am%ygrids, fx, fy)
