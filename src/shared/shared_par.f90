@@ -16,7 +16,7 @@ module constants
   character(len=MAX_STRING_LEN),parameter :: log_fname='output_attsurf_tomo.log'
 
 
-  real(kind=dp), parameter :: precond_thres = 1.0d-2 
+  real(kind=dp), parameter :: precond_thres = 1.0d-4
   integer, parameter :: iter_store = 6
 
 end module constants

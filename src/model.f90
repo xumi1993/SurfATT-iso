@@ -89,8 +89,7 @@ module model
     ! this%vs1d = linspace(ap%inversion%vel_range(1), ap%inversion%vel_range(2), this%n_xyz(3))
     if (myrank == 0) then
       this%vs1d = linspace(ap%inversion%vel_range(1), ap%inversion%vel_range(2), this%n_xyz(3))
-      if (ap%inversion%init_model_type == 0) then
-      elseif (ap%inversion%init_model_type == 1) then
+      if (ap%inversion%init_model_type == 1) then
         call this%inv1d(ap%inversion%niter, this%vs1d, niter, misfits)
       elseif (ap%inversion%init_model_type == 2) then
         ! call load_npy(ap%inversion%init_model_path, vstmp, ier, msger)
@@ -104,6 +103,9 @@ module model
           this%vs1d(i) = sum(vstmp(:,:,i))/(this%n_xyz(1)*this%n_xyz(2))
         enddo
         this%vs3d = vstmp
+      elseif(ap%inversion%init_model_type /= 0) then
+        call write_log('Unknown initial model type',3,this%module)
+        stop
       endif
       if (ap%inversion%init_model_type < 2) then
         do i = 1, this%n_xyz(1)
@@ -120,7 +122,7 @@ module model
     call sync_from_main_rank(this%vp3d, this%n_xyz(1), this%n_xyz(2), this%n_xyz(3))
     call sync_from_main_rank(this%rho3d, this%n_xyz(1), this%n_xyz(2), this%n_xyz(3))
     call sync_from_main_rank(this%vs1d, this%n_xyz(3))
-  end subroutine get_init_model
+      end subroutine get_init_model
 
   subroutine get_inv_grids(this)
     class(att_model), intent(inout) :: this

@@ -360,6 +360,9 @@ contains
       am%rho3d_opt = am%rho3d
     endif
     call synchronize_all()
+    call sync_from_main_rank(am%vs3d_opt, am%n_xyz(1), am%n_xyz(2), am%n_xyz(3))
+    call sync_from_main_rank(am%vp3d_opt, am%n_xyz(1), am%n_xyz(2), am%n_xyz(3))
+    call sync_from_main_rank(am%rho3d_opt, am%n_xyz(1), am%n_xyz(2), am%n_xyz(3))
   end subroutine reset_opt
 
 end module

@@ -49,7 +49,7 @@ contains
   
   function LoadFile(filename, error) result(root)
     character(len=*), intent(in) :: filename
-    character(len=string_length, kind=c_char), intent(out) :: error
+    character(len=string_length, kind=c_char), intent(inout) :: error
     type(c_ptr) :: root
     character(len=:, kind=c_char), allocatable :: filename_copy
     filename_copy = filename//char(0)

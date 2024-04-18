@@ -1324,7 +1324,7 @@ subroutine bcast_all_dp_3(buffer, countval)
 
   integer :: ier
 
-  call MPI_RECV(recvbuf,recvcount,MPI_CHARACTER*nlen,dest,recvtag, &
+  call MPI_RECV(recvbuf,recvcount,MPI_CHARACTER,dest,recvtag, &
                 my_local_mpi_comm_world,MPI_STATUS_IGNORE,ier)
 
   end subroutine recv_ch_array
@@ -1440,7 +1440,7 @@ subroutine bcast_all_dp_3(buffer, countval)
 
   integer :: ier
 
-  call MPI_SEND(sendbuf,sendcount,MPI_CHARACTER*nlen,dest,sendtag,my_local_mpi_comm_world,ier)
+  call MPI_SEND(sendbuf,sendcount,MPI_CHARACTER,dest,sendtag,my_local_mpi_comm_world,ier)
 
   end subroutine send_ch_array
 
@@ -1986,11 +1986,11 @@ subroutine bcast_all_dp_3(buffer, countval)
     if (myrank == 0) then
       do i = 2, mysize
         if (rank_map(i, 2) == 0) then
-          call send(buffer, countval, rank_map(i, 1), tag)
+          call send_i(buffer, countval, rank_map(i, 1), tag)
         endif
       enddo
     elseif (local_rank == 0) then
-      call recv(buffer, countval, 0, tag)
+      call send_i(buffer, countval, 0, tag)
     endif
   end subroutine sync_from_main_rank_i
 
@@ -2002,11 +2002,11 @@ subroutine bcast_all_dp_3(buffer, countval)
     if (myrank == 0) then
       do i = 2, mysize
         if (rank_map(i, 2) == 0) then
-          call send(buffer, countval, nlen, rank_map(i, 1), tag)
+          call send_ch_array(buffer, countval, nlen, rank_map(i, 1), tag)
         endif
       enddo
     elseif (local_rank == 0) then
-      call recv(buffer, countval, nlen, 0, tag)
+      call recv_ch_array(buffer, countval, nlen, 0, tag)
     endif
     call synchronize_all()
     

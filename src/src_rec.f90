@@ -213,11 +213,14 @@ contains
     call prepare_shm_array_ch_1d(this%stations%staname, this%stations%nsta, MAX_NAME_LEN, win_staname)
     call prepare_shm_array_dp_1d(this%stations%stla, this%stations%nsta, win_stla)
     call prepare_shm_array_dp_1d(this%stations%stlo, this%stations%nsta, win_stlo)
-    if (local_rank == 0) then
+    if (myrank == 0) then
       this%stations%staname = temp(1:count)
       this%stations%stla = templa(1:count)
       this%stations%stlo = templo(1:count)
     endif
+    call sync_from_main_rank_ch(this%stations%staname, this%stations%nsta, MAX_NAME_LEN)
+    call sync_from_main_rank(this%stations%stla, this%stations%nsta)
+    call sync_from_main_rank(this%stations%stlo, this%stations%nsta)
     call synchronize_all()
 
   end subroutine get_sta

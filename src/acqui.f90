@@ -279,19 +279,17 @@ contains
       ! to inversion grids
       if (ap%inversion%kdensity_coe > 0) then
         call this%regularize_ker_density(precond)
-      else
-        precond = ones(am%n_xyz(1),am%n_xyz(2),am%n_xyz(3))
+        this%ker_beta = this%ker_beta*precond
       endif
-      ! this%ker_beta = this%ker_beta*precond
       call inv_grid_iso(am%xinv,am%yinv,am%zinv, nxinv, nyinv, nzinv,&
                         nset,this%ker_beta,am%n_xyz(1),am%n_xyz(2),am%n_xyz(3),&
                         gk,am%xgrids,am%ygrids,am%zgrids)
-      call inv_grid_iso(am%xinv,am%yinv,am%zinv, nxinv, nyinv, nzinv,&
-                        nset,precond,am%n_xyz(1),am%n_xyz(2),am%n_xyz(3),&
-                        gk_precond,am%xgrids,am%ygrids,am%zgrids)
+      ! call inv_grid_iso(am%xinv,am%yinv,am%zinv, nxinv, nyinv, nzinv,&
+      !                   nset,precond,am%n_xyz(1),am%n_xyz(2),am%n_xyz(3),&
+      !                   gk_precond,am%xgrids,am%ygrids,am%zgrids)
       call inv2fwd_iso(am%xinv,am%yinv,am%zinv,nxinv,nyinv,nzinv,&
                        ap%inversion%ncomponents,am%n_xyz(1),am%n_xyz(2),am%n_xyz(3), &
-                       gk*gk_precond,am%xgrids,am%ygrids,am%zgrids,update)
+                       gk,am%xgrids,am%ygrids,am%zgrids,update)
       update = update / nset
       gradient_s = gradient_s + update*ap%data%weights(this%itype)
     endif
