@@ -308,12 +308,12 @@ contains
     character(len=MAX_STRING_LEN) :: secname
 
     if (ap%output%verbose_level > 0) then
-      write(secname,'(a,i3.3)') '/gradient_',iter  
+      write(secname,'(a,i3.3)') '/gradient_',iter-1  
       call h%add(secname, gradient_s)
       do itype = 1, 2
         if (.not. ap%data%vel_type(itype)) cycle
         call select_type()
-        write(secname,'(a,a,"_",i3.3)') '/kdensity_',trim(ap%data%gr_name(itype)),iter
+        write(secname,'(a,a,"_",i3.3)') '/kdensity_',trim(ap%data%gr_name(itype)),iter-1
         call h%add(secname, aq%ker_density)
       enddo
     endif
