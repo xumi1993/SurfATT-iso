@@ -274,7 +274,7 @@ contains
       ! initial inversion grid kernel
       call write_log('This is post processing for '//trim(this%gr_name)//' kernel...',1,this%module)
       gk = zeros(nset*nxinv*nyinv*nzinv)
-      gk_precond = zeros(nset*nxinv*nyinv*nzinv)
+      ! gk_precond = zeros(nset*nxinv*nyinv*nzinv)
       update = zeros(am%n_xyz(1),am%n_xyz(2),am%n_xyz(3))
       ! to inversion grids
       if (ap%inversion%kdensity_coe > 0) then
