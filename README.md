@@ -17,7 +17,7 @@ Please refer to the [installation guide](https://surfatt.xumijian.me/installatio
 ## How to use SurfATT
 The executable file `bin/surfatt_tomo` for inverting surface dispersion data for S-wave velocity can be run with `mpirun` as:
 ```
-mpirun -np 4 bin/attsurf_tomo -i input_params.yml
+mpirun -np 4 bin/surfatt_tomo -i input_params.yml
 ```
 
 ### A quick example
