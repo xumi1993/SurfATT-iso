@@ -92,10 +92,10 @@ contains
           call h%add('/stlo_'//trim(ap%data%gr_name(itype)), aq%sr%stations%stlo)
           call h%add('/stla_'//trim(ap%data%gr_name(itype)), aq%sr%stations%stla)
         enddo
-        call h%add('/x', am%xgrids)
-        call h%add('/y', am%ygrids)
-        call h%add('/z', am%zgrids)
-        call h%add('/vs_000', am%vs3d)
+        call h%add('/lon', am%xgrids)
+        call h%add('/lat', am%ygrids)
+        call h%add('/dep', am%zgrids)
+        call h%add('/vs_000', transpose_3(am%vs3d))
       endif
     endif
     call synchronize_all()
@@ -298,8 +298,8 @@ contains
     character(len=MAX_STRING_LEN) :: secname
 
     if (ap%output%verbose_level > 0) then
-      write(secname,'(a,i3.3)') '/vs_',iter  
-      call h%add(secname, am%vs3d)
+      write(secname,'(a,i3.3)') '/vs_',iter-1
+      call h%add(secname, transpose_3(am%vs3d))
     endif
 
   end subroutine write_tmp_model
@@ -309,12 +309,12 @@ contains
 
     if (ap%output%verbose_level > 0) then
       write(secname,'(a,i3.3)') '/gradient_',iter-1  
-      call h%add(secname, gradient_s)
+      call h%add(secname, transpose_3(gradient_s))
       do itype = 1, 2
         if (.not. ap%data%vel_type(itype)) cycle
         call select_type()
         write(secname,'(a,a,"_",i3.3)') '/kdensity_',trim(ap%data%gr_name(itype)),iter-1
-        call h%add(secname, aq%ker_density)
+        call h%add(secname, transpose_3(aq%ker_density))
       enddo
     endif
 

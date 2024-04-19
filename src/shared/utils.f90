@@ -661,6 +661,21 @@ end function
     return
   end function interp1_1
 
+  pure function transpose_3(x) result(y)
+    real(kind = DPRE), dimension(:,:,:), intent(in) :: x
+    real(kind = DPRE), dimension(size(x,2), size(x,1), size(x,3)) :: y
+    integer(kind = IPRE) :: i, j, k
+
+    do i = 1, size(x,1)
+      do j = 1, size(x,2)
+        do k = 1, size(x,3)
+          y(j,i,k) = x(i,j,k)
+        end do
+      end do
+    end do
+    return
+  end function transpose_3
+
   pure subroutine meshgrid2_ij(ax, ay, x, y)
     real(kind = DPRE), dimension(:), intent(in) :: ax, ay
     real(kind = DPRE), dimension(:,:), allocatable, intent(out) :: x, y

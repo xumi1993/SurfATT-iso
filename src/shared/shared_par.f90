@@ -17,6 +17,7 @@ module constants
 
 
   real(kind=dp), parameter :: precond_thres = 1.0d-4
+  integer, parameter :: max_iter_1d = 40
   integer, parameter :: iter_store = 6
 
 end module constants

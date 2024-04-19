@@ -90,9 +90,8 @@ module model
     if (myrank == 0) then
       this%vs1d = linspace(ap%inversion%vel_range(1), ap%inversion%vel_range(2), this%n_xyz(3))
       if (ap%inversion%init_model_type == 1) then
-        call this%inv1d(ap%inversion%niter, this%vs1d, niter, misfits)
+        call this%inv1d(this%vs1d, niter, misfits)
       elseif (ap%inversion%init_model_type == 2) then
-        ! call load_npy(ap%inversion%init_model_path, vstmp, ier, msger)
         call h5read(ap%inversion%init_model_path, '/vs', vstmp)
         if (any(shape(vstmp) /= this%n_xyz)) then
           write(*,*) 'Shape of '//trim(ap%inversion%init_model_path)//' dose not match with' //&
@@ -104,7 +103,7 @@ module model
         enddo
         this%vs3d = vstmp
       elseif(ap%inversion%init_model_type /= 0) then
-        call write_log('Unknown initial model type',3,this%module)
+        call write_log('Unknown initial model type, only valid in [0,1,2]',3,this%module)
         stop
       endif
       if (ap%inversion%init_model_type < 2) then
@@ -161,16 +160,14 @@ module model
     do i = 1, nset
       polar = -polar
       this%xinv(:, i) = ixgrids+polar*(i-1)*(ixgrids(2)-ixgrids(1))/(nset+1)
-      ! this%xinv(:, i) = ixgrids+i*(ixgrids(2)-ixgrids(1))/(nset+1)
       this%yinv(:, i) = iygrids+(i-1)*(iygrids(2)-iygrids(1))/(nset+1)
       this%zinv(:, i) = izgrids+(i-1)*zadd
     enddo
   end subroutine get_inv_grids
 
-  subroutine inv1d(this, iter_num, vsinv, niter, misfits)
+  subroutine inv1d(this, vsinv, niter, misfits)
     class(att_model), intent(inout) :: this
     type(srcrec), pointer :: sr
-    integer, intent(in) :: iter_num
     real(kind=dp), parameter :: minderr = 0.0001
     real(kind=dp), dimension(this%n_xyz(3)), intent(out) :: vsinv
     integer, intent(out) :: niter
@@ -183,10 +180,10 @@ module model
     real(kind=dp), dimension(:),allocatable :: tmp
 
     vsinv = this%vs1d
-    misfits = zeros(iter_num)
+    misfits = zeros(max_iter_1d)
     sigma = this%zgrids(this%n_xyz(3))/ap%inversion%n_inv_grid(3)/2
     call write_log('Do 1D inverison using averaged surface wave data',1,this%module)
-    do iter = 1, iter_num
+    do iter = 1, max_iter_1d
       update_total = 0.
       do itype = 1, 2
         if (.not. ap%data%vel_type(itype)) cycle
@@ -305,10 +302,10 @@ module model
       fname = trim(ap%output%output_path)//&
                     '/'//trim(subname)//'.h5'
       call h%open(fname, status='new', action='write')
-      call h%add('/x',this%xgrids)
-      call h%add('/y',this%ygrids)
-      call h%add('/z',this%zgrids)
-      call h%add('/vs',this%vs3d)
+      call h%add('/lon',this%xgrids)
+      call h%add('/lat',this%ygrids)
+      call h%add('/dep',this%zgrids)
+      call h%add('/vs',transpose_3(this%vs3d))
       call h%close()
     endif
     call synchronize_all()    
@@ -320,7 +317,7 @@ module model
     real(kind=dp) :: fitfun(maxanchor),anomfun(maxanchor)
     
     do i = 1,maxanchor
-        anomfun(i) = (sqrt(para(1)**2+para(2)*(anch(i)-1))-para(1))/para(3)
+      anomfun(i) = (sqrt(para(1)**2+para(2)*(anch(i)-1))-para(1))/para(3)
     end do
     fitfun(:) = abs(anomfun(:) - n_pi(1:maxanchor))
   end subroutine dep_anom_fun
@@ -344,7 +341,7 @@ module model
     para = [1,1,1]
     write(msg,'(a,f6.2,a,f3.1,a)') 'Depth anomaly anchor: ', (anch(1)-1)*(this%zgrids(2)-this%zgrids(1)), 'km, ', n_pi(1)*2, 'pi'
     call write_log(trim(msg),0,this%module)
-    do i=2,nz*2+1
+    do i = 2, nz*2+1
       anch(i) = anch(i-1) + (nanomtop-anom_size_inc)/2 + max(i-2,0)*anom_size_inc
       n_pi(i) = n_pi(i-1) + 0.25
       write(msg,'(a,f6.2,a,f3.1,a)') 'Depth anomaly anchor: ', (anch(i)-1)*(this%zgrids(2)-this%zgrids(1)), 'km, ', n_pi(i)*2, 'pi'
