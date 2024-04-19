@@ -308,7 +308,7 @@ contains
     character(len=MAX_STRING_LEN) :: secname
 
     if (ap%output%verbose_level > 0) then
-      write(secname,'(a,i3.3)') '/vs_',iter-1
+      write(secname,'(a,i3.3)') '/vs_',iter
       call h%add(secname, transpose_3(am%vs3d))
     endif
 
