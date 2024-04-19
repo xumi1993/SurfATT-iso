@@ -148,11 +148,11 @@ contains
     real(kind=dp), dimension(:,:),allocatable :: Tx, Ty
     ! real(kind=dp), dimension(:,:,:,:), allocatable :: adj_s_local, adj_xi_local, adj_eta_local
     real(kind=dp),  dimension(:,:), allocatable, intent(in) :: adjtable, timetable
-    real(kind=dp), dimension(acqui%ag%nx, acqui%ag%ny) :: vtmp, lat_corr
+    ! real(kind=dp), dimension(acqui%ag%nx, acqui%ag%ny) :: vtmp
     integer :: i, j, k
 
-    vtmp = 1/acqui%ag%svel(pidx, :,:)
-    acqui%adj_s(pidx, :,:) = acqui%adj_s(pidx, :,:)+adjtable * vtmp**3
+    ! vtmp = 1/acqui%ag%svel(pidx, :,:)
+    acqui%adj_s(pidx, :,:) = acqui%adj_s(pidx, :,:)+adjtable / acqui%ag%svel(pidx, :,:)**3
   end subroutine post_proc_eikokernel
 
   subroutine forward_simulate(this, chi, istotable, isadj)
@@ -193,8 +193,8 @@ contains
       enddo ! i = acqui%istart, acqui%iend
     endif ! if ((acqui%iend-acqui%istart)>=0)
     call synchronize_all()
-    call sum_all_dp(chi_local, chi)
-    if (istotable) call sum_all_1Darray_dp(local_tt, acqui%sr%tt_fwd,acqui%sr%npath)
+    call sum_all(chi_local, chi)
+    if (istotable) call sum_all(local_tt, acqui%sr%tt_fwd,acqui%sr%npath)
   end subroutine forward_simulate
 
   subroutine optimize(this)
@@ -239,7 +239,7 @@ contains
       call write_log(this%message,1,this%module)
       call acqui%prepare_fwd_linesearch(xi_new, eta_new)
       call this%forward_simulate(chi_global, .false., .false.)
-      call bcast_all_singledp(chi_global)
+      call bcast_all(chi_global)
       if (chi_global > chi0) then
         write(this%message, '(a,f6.4,a,f6.4)') 'Misfit increased from ',chi0,' to ',chi_global
         call write_log(this%message,0,this%module)

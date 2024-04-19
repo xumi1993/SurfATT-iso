@@ -29,8 +29,8 @@ module acqui
     logical                                                :: is_fwd
     character(len=MAX_STRING_LEN)                          :: model_fname, module='ACQUI',&
                                                               final_fname, gr_name, message
-    real(kind=dp), dimension(:,:,:,:), pointer             :: adj_s, adj_density
-    real(kind=dp), dimension(:,:,:,:), allocatable         :: adj_s_local, adj_density_local
+    real(kind=dp), dimension(:,:,:), pointer               :: adj_s, adj_density
+    real(kind=dp), dimension(:,:,:), allocatable           :: adj_s_local, adj_density_local
     real(kind=dp), dimension(:,:,:,:), pointer             :: sen_vsRc, sen_vpRc, sen_rhoRc
     real(kind=dp), dimension(:,:,:), pointer               :: ker_beta, ker_density
     integer, dimension(:,:), pointer                       :: isrcs
@@ -80,7 +80,7 @@ contains
     iperiods = zeros(this%sr%nperiod)
     isrcs = zeros(this%sr%npath, 2)
     this%nsrc = 0
-    if (myrank == 0) then
+    if (local_rank == 0) then
       do j = 1, this%sr%stations%nsta
         if (any(this%sr%evtname==this%sr%stations%staname(j))) then  
           call this%sr%get_periods_by_src(this%sr%stations%staname(j), iperiods, np)
@@ -96,9 +96,9 @@ contains
       call write_log(this%message,1,this%module)
     endif
     call synchronize_all()
-    call bcast_all_singlei(this%nsrc)
+    call bcast_all(this%nsrc)
     call prepare_shm_array_i_2d(this%isrcs, this%nsrc, 2, win_isrcs)
-    if (myrank == 0) this%isrcs(1:this%nsrc, :) = isrcs(1:this%nsrc, :)
+    if (local_rank == 0) this%isrcs(1:this%nsrc, :) = isrcs(1:this%nsrc, :)
     call synchronize_all()
     call scatter_all_i(this%nsrc,mysize,myrank,this%istart,this%iend)
   end subroutine att_scatter_src_gather
@@ -106,9 +106,9 @@ contains
   subroutine prepare_inv(this)
     class(att_acqui), intent(inout) :: this
 
-    this%adj_s_local = zeros(this%sr%nperiod, am%n_xyz(1), am%n_xyz(2), am%n_xyz(3))
-    this%adj_density_local = zeros(this%sr%nperiod, am%n_xyz(1), am%n_xyz(2), am%n_xyz(3))
-    if (myrank == 0) then
+    this%adj_s_local = 0._dp
+    this%adj_density_local = 0._dp
+    if (local_rank == 0) then
       this%sr%tt_fwd = 0._dp
       this%adj_s = 0._dp
       this%adj_density = 0._dp
@@ -135,7 +135,7 @@ contains
     real(kind=dp), dimension(:), allocatable :: local_tt
     real(kind=dp), dimension(:,:), allocatable :: adj, kden
     character(len=MAX_STRING_LEN) :: fname
-    integer :: iz,i
+    integer :: iz,i, pidx, stidx
 
     if (present(verbose)) then
       verbose_local = verbose
@@ -153,39 +153,40 @@ contains
                             trim(this%gr_name)//'...',1,this%module)
     if ((this%iend-this%istart)>=0) then
       do i = this%istart, this%iend
-        write(this%message, '(i0,a,F0.4,a,a)') myrank,' period: ',&
-              this%sr%periods(this%isrcs(i,1)),' src_name: ',&
-              this%sr%stations%staname(this%isrcs(i, 2))
+        pidx = this%isrcs(i,1); stidx = this%isrcs(i,2)
+        write(this%message, '("rank: ",i0,a,F0.4,a,a," (",i0,"/",i0,")")') myrank,' period: ',&
+              this%sr%periods(pidx),' src_name: ',&
+              trim(this%sr%stations%staname(stidx)), i-this%istart+1, this%iend-this%istart+1
         if (verbose_local) call write_log(this%message,0,this%module)
         ! get receivers for this source
-        call ma%get_recs(this%sr,this%isrcs(i,1),this%sr%stations%staname(this%isrcs(i, 2)))
+        call ma%get_recs(this%sr,pidx,this%sr%stations%staname(stidx))
         ! forward simulation
-        call ma%run_forward(this%ag%svel(this%isrcs(i,1),:,:), this%ag%m11(this%isrcs(i, 1),:,:),&
-                            this%ag%m22(this%isrcs(i,1),:,:), this%ag%m12(this%isrcs(i,1),:,:),&
-                            this%ag%ref_t(this%isrcs(i,1),:,:))
+        call ma%run_forward(this%ag%svel(pidx,:,:), this%ag%m11(pidx,:,:),&
+                            this%ag%m22(pidx,:,:), this%ag%m12(pidx,:,:),&
+                            this%ag%ref_t(pidx,:,:))
         ! sum chi
         chi_local = chi_local + ma%chi
         ! save synthetic tt to table
         if (istotable) call ma%to_table(local_tt)
         if (isadj) then
           ! measure adjoint
-          call ma%run_adjoint(this%ag%m11(this%isrcs(i, 1),:,:),this%ag%m22(this%isrcs(i,1),:,:),&
-                              this%ag%m12(this%isrcs(i,1),:,:),adj)
+          call ma%run_adjoint(this%ag%m11(pidx,:,:),this%ag%m22(pidx,:,:),&
+                              this%ag%m12(pidx,:,:),adj)
           ! kernel density
-          call ma%run_adjoint_density(this%ag%m11(this%isrcs(i, 1),:,:), this%ag%m22(this%isrcs(i,1),:,:),&
-                                      this%ag%m12(this%isrcs(i,1),:,:),kden)
+          call ma%run_adjoint_density(this%ag%m11(pidx,:,:), this%ag%m22(pidx,:,:),&
+                                      this%ag%m12(pidx,:,:),kden)
           ! post proc of eikonal kernel
-          call this%post_proc_eikokernel(this%isrcs(i,1), adj, ma%timetable)
+          call this%post_proc_eikokernel(pidx, adj, ma%timetable)
         endif
-        ! distribute measadj
+        ! distory measadj
         call ma%distory()
       enddo
     endif
     call synchronize_all()
-    if (istotable) call sum_all_1Darray_dp(local_tt, this%sr%tt_fwd, this%sr%npath)
+    if (istotable) call sum_all(local_tt, this%sr%tt_fwd, this%sr%npath)
     ! reduce chi
-    call sum_all_dp(chi_local, chi_global)
-    call bcast_all_singledp(chi_global)
+    call sum_all(chi_local, chi_global)
+    call bcast_all(chi_global)
     call synchronize_all()
   end subroutine forward_simulate
 
@@ -217,6 +218,9 @@ contains
     call amd%collect_sen(loc_sen_vsRc, loc_sen_vpRc, loc_sen_rhoRc,&
                          this%sen_vsRc, this%sen_vpRc, this%sen_rhoRc)
     call synchronize_all()
+    call sync_from_main_rank(this%sen_vsRc, this%sr%nperiod, am%n_xyz(1), am%n_xyz(2), am%n_xyz(3))
+    call sync_from_main_rank(this%sen_vpRc, this%sr%nperiod, am%n_xyz(1), am%n_xyz(2), am%n_xyz(3))
+    call sync_from_main_rank(this%sen_rhoRc, this%sr%nperiod, am%n_xyz(1), am%n_xyz(2), am%n_xyz(3))
   end subroutine depthkernel
 
   subroutine combine_kernels(this)
@@ -227,24 +231,28 @@ contains
     class(att_acqui), intent(inout) :: this
     integer :: ip, i
 
+    ! call write_log('Reduce adjoint fields...',0,this%module)
+    call sum_all(this%adj_s_local, this%adj_s, this%sr%nperiod, am%n_xyz(1), am%n_xyz(2))
+    call sum_all(this%adj_density_local, this%adj_density, this%sr%nperiod, am%n_xyz(1), am%n_xyz(2))
     call write_log('Combining eikonal and surface wave kernels...',1,this%module)
-    call sum_all_1Darray_dp(this%adj_s_local, this%adj_s, this%sr%nperiod*am%n_xyz(1)*am%n_xyz(2)*am%n_xyz(3))
-    call sum_all_1Darray_dp(this%adj_density_local, this%adj_density, this%sr%nperiod*am%n_xyz(1)*am%n_xyz(2)*am%n_xyz(3))
     if (myrank == 0) then
       do ip = 1, this%sr%nperiod
-        this%ker_beta = this%ker_beta -this%adj_s(ip,:,:,:) * this%sen_vsRc(ip,:,:,:)
-        this%ker_beta = this%ker_beta -this%adj_s(ip,:,:,:) * this%sen_vpRc(ip,:,:,:) &
-                        * dalpha_dbeta(am%vs3d_opt) 
-        this%ker_beta = this%ker_beta -this%adj_s(ip,:,:,:) * this%sen_rhoRc(ip,:,:,:) &
-                        * drho_dalpha(am%vp3d_opt) * dalpha_dbeta(am%vs3d_opt)
-        this%ker_density = this%ker_density - this%adj_density(ip,:,:,:) * this%sen_vsRc(ip,:,:,:) - &
-                           this%adj_density(ip,:,:,:) * this%sen_vpRc(ip,:,:,:) * dalpha_dbeta(am%vs3d_opt) - &
-                           this%adj_density(ip,:,:,:) * this%sen_rhoRc(ip,:,:,:) * &
-                           drho_dalpha(am%vp3d_opt) * dalpha_dbeta(am%vs3d_opt)
+        do i = 1, am%n_xyz(3)
+          this%ker_beta(:,:,i) = this%ker_beta(:,:,i) -this%adj_s(ip,:,:) * this%sen_vsRc(ip,:,:,i) &
+                               - this%adj_s(ip,:,:) * this%sen_vpRc(ip,:,:,i) * dalpha_dbeta(am%vs3d_opt(:,:,i)) &
+                               - this%adj_s(ip,:,:) * this%sen_rhoRc(ip,:,:,i) * &
+                                 drho_dalpha(am%vp3d_opt(:,:,i)) * dalpha_dbeta(am%vs3d_opt(:,:,i))
+          this%ker_density(:,:,i) = this%ker_density(:,:,i) - this%adj_density(ip,:,:) * this%sen_vsRc(ip,:,:,i) &
+                                  - this%adj_density(ip,:,:) * this%sen_vpRc(ip,:,:,i) * dalpha_dbeta(am%vs3d_opt(:,:,i)) &
+                                  - this%adj_density(ip,:,:) * this%sen_rhoRc(ip,:,:,i) * &
+                                    drho_dalpha(am%vp3d_opt(:,:,i)) * dalpha_dbeta(am%vs3d_opt(:,:,i))
+        enddo
       enddo
       this%ker_beta = this%ker_beta / this%chi0
     endif
     call synchronize_all()
+    call sync_from_main_rank(this%ker_beta, am%n_xyz(1), am%n_xyz(2), am%n_xyz(3))
+    call sync_from_main_rank(this%ker_density, am%n_xyz(1), am%n_xyz(2), am%n_xyz(3))
   end subroutine combine_kernels
 
   subroutine post_processing_for_kernel(this)
@@ -266,24 +274,22 @@ contains
       ! initial inversion grid kernel
       call write_log('This is post processing for '//trim(this%gr_name)//' kernel...',1,this%module)
       gk = zeros(nset*nxinv*nyinv*nzinv)
-      gk_precond = zeros(nset*nxinv*nyinv*nzinv)
+      ! gk_precond = zeros(nset*nxinv*nyinv*nzinv)
       update = zeros(am%n_xyz(1),am%n_xyz(2),am%n_xyz(3))
       ! to inversion grids
       if (ap%inversion%kdensity_coe > 0) then
         call this%regularize_ker_density(precond)
-      else
-        precond = ones(am%n_xyz(1),am%n_xyz(2),am%n_xyz(3))
+        this%ker_beta = this%ker_beta*precond
       endif
-      ! this%ker_beta = this%ker_beta*precond
       call inv_grid_iso(am%xinv,am%yinv,am%zinv, nxinv, nyinv, nzinv,&
                         nset,this%ker_beta,am%n_xyz(1),am%n_xyz(2),am%n_xyz(3),&
                         gk,am%xgrids,am%ygrids,am%zgrids)
-      call inv_grid_iso(am%xinv,am%yinv,am%zinv, nxinv, nyinv, nzinv,&
-                        nset,precond,am%n_xyz(1),am%n_xyz(2),am%n_xyz(3),&
-                        gk_precond,am%xgrids,am%ygrids,am%zgrids)
+      ! call inv_grid_iso(am%xinv,am%yinv,am%zinv, nxinv, nyinv, nzinv,&
+      !                   nset,precond,am%n_xyz(1),am%n_xyz(2),am%n_xyz(3),&
+      !                   gk_precond,am%xgrids,am%ygrids,am%zgrids)
       call inv2fwd_iso(am%xinv,am%yinv,am%zinv,nxinv,nyinv,nzinv,&
                        ap%inversion%ncomponents,am%n_xyz(1),am%n_xyz(2),am%n_xyz(3), &
-                       gk*gk_precond,am%xgrids,am%ygrids,am%zgrids,update)
+                       gk,am%xgrids,am%ygrids,am%zgrids,update)
       update = update / nset
       gradient_s = gradient_s + update*ap%data%weights(this%itype)
     endif
@@ -292,42 +298,42 @@ contains
   end subroutine post_processing_for_kernel
 
   subroutine regularize_ker_density(this, precond)
+    !> Regularize the kernel density.
+    !! Inputs:
+    !!   this: an object of type att_acqui
+    !! Outputs:
+    !!   precond: a 3D array of real numbers representing the preconditioned kernel density
     class(att_acqui), intent(inout) :: this
     real(kind=dp), dimension(:,:,:), allocatable, intent(out) :: precond
 
     precond = zeros(am%n_xyz(1), am%n_xyz(2), am%n_xyz(3))
     precond = abs(this%ker_density)/maxval(abs(this%ker_density))
-    where(precond<1e-2)
+    where(precond<precond_thres)
       precond = 0
     elsewhere
       precond = 1/precond**ap%inversion%kdensity_coe
     endwhere
-    ! call save_npy('precond.npy', precond)
-    ! precond = precond/maxval(abs(precond))
   end subroutine regularize_ker_density
 
   subroutine post_proc_eikokernel(this, pidx, adjtable, kden)
     class(att_acqui), intent(inout) :: this
     integer, intent(inout) :: pidx
     real(kind=dp), dimension(:,:),allocatable :: Tx, Ty
-    ! real(kind=dp), dimension(:,:,:,:), allocatable :: adj_s_local, adj_xi_local, adj_eta_local
     real(kind=dp),  dimension(:,:), intent(in) :: adjtable, kden
-    real(kind=dp), dimension(am%n_xyz(1), am%n_xyz(2)) :: vtmp, lat_corr
     integer :: i, j, k
 
-    vtmp = 1/this%ag%svel(pidx, :,:)
-    do i = 1, am%n_xyz(3)
-      this%adj_s_local(pidx, :,:,i) = this%adj_s_local(pidx, :,:,i)+adjtable * vtmp**3
-      this%adj_density_local(pidx, :,:,i) = this%adj_density_local(pidx, :,:,i)+kden
-    enddo
+    this%adj_s_local(pidx, :,:) = this%adj_s_local(pidx, :,:)+adjtable / this%ag%svel(pidx, :,:)**3
+    this%adj_density_local(pidx, :,:) = this%adj_density_local(pidx, :,:)+kden
   end subroutine post_proc_eikokernel
 
   subroutine allocate_shm_arrays(this)
     class(att_acqui), intent(inout) :: this
 
     if (.not. this%is_fwd) then
-      call prepare_shm_array_dp_4d(this%adj_s, this%sr%nperiod, am%n_xyz(1), am%n_xyz(2), am%n_xyz(3), win_adj_s)
-      call prepare_shm_array_dp_4d(this%adj_density, this%sr%nperiod, am%n_xyz(1), am%n_xyz(2), am%n_xyz(3), win_adj_density)
+      allocate(this%adj_s_local(this%sr%nperiod, am%n_xyz(1), am%n_xyz(2)))
+      allocate(this%adj_density_local(this%sr%nperiod, am%n_xyz(1), am%n_xyz(2)))
+      call prepare_shm_array_dp_3d(this%adj_s, this%sr%nperiod, am%n_xyz(1), am%n_xyz(2), win_adj_s)
+      call prepare_shm_array_dp_3d(this%adj_density, this%sr%nperiod, am%n_xyz(1), am%n_xyz(2), win_adj_density)
       call prepare_shm_array_dp_4d(this%sen_vsRc, this%sr%nperiod, am%n_xyz(1), am%n_xyz(2), am%n_xyz(3), win_sen_vsRc)
       call prepare_shm_array_dp_4d(this%sen_vpRc, this%sr%nperiod, am%n_xyz(1), am%n_xyz(2), am%n_xyz(3), win_sen_vpRc)
       call prepare_shm_array_dp_4d(this%sen_rhoRc, this%sr%nperiod, am%n_xyz(1), am%n_xyz(2), am%n_xyz(3), win_sen_rhoRc)

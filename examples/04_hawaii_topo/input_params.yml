@@ -8,7 +8,7 @@ data:
 
 output:
   output_path: OUTPUT_FILES/ # path to save output files
-  is_save_initial_model: True # whether save initial model
+  verbose_level: 2 # 0 quite mode, 1 verbose mode (initial model, temp model for each iteration, kernel density), 2 full output (travel time table)
   log_level: 1 # 0 debug mode, 1 verbose mode
 
 domain:

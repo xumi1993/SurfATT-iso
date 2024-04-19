@@ -43,16 +43,16 @@ module topo
       call this%read(fname)
     end if
     call synchronize_all()
-    call bcast_all_i(this%dims, 2)
+    call bcast_all(this%dims, 2)
     if (myrank /= 0) then
       allocate(this%lon(this%dims(1)), this%lat(this%dims(2)),&
                this%z(this%dims(1), this%dims(2)))
     end if
-    call bcast_all_dp(this%lon, this%dims(1))
-    call bcast_all_dp(this%lat, this%dims(2))
-    call bcast_all_dp(this%z, this%dims(1)*this%dims(2))
-    call bcast_all_singledp(this%dx)
-    call bcast_all_singledp(this%dy)
+    call bcast_all(this%lon, this%dims(1))
+    call bcast_all(this%lat, this%dims(2))
+    call bcast_all(this%z, this%dims(1)*this%dims(2))
+    call bcast_all(this%dx)
+    call bcast_all(this%dy)
   end subroutine read_topo_mpi
 
   subroutine read_topo(this, fname)
@@ -110,10 +110,10 @@ module topo
       allocate(this%lon(nx), this%lat(ny), this%z(nx, ny))  
     endif
     call synchronize_all()
-    call bcast_all_i(this%dims, 2)
-    call bcast_all_dp(this%lon, this%dims(1))
-    call bcast_all_dp(this%lat, this%dims(2))
-    call bcast_all_dp(this%z, this%dims(1)*this%dims(2))
+    call bcast_all(this%dims, 2)
+    call bcast_all(this%lon, this%dims(1))
+    call bcast_all(this%lat, this%dims(2))
+    call bcast_all(this%z, this%dims(1)*this%dims(2))
   end subroutine grid_topo
 
   function calc_dip_angle(this, topo) result(angle)

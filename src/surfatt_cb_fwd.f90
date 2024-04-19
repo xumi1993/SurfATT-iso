@@ -27,22 +27,19 @@ program surfatt_cb_fwd
   type(att_tomo) :: att
   character(len=MAX_STRING_LEN) :: fname
   integer, dimension(3) :: ncb
-  real(kind=dp) :: pert, hmarg, anom_size
+  real(kind=dp) :: pert, hmarg, anom_size, max_noise
 
   ! initialize MPI
   call init_mpi()
-  call world_rank(myrank)
-  call world_size(mysize)
 
   ! read command line arguments
-  call argparse_cb_fwd(fname, ncb, pert, hmarg, anom_size)
+  call argparse_cb_fwd(fname, ncb, pert, hmarg, anom_size, max_noise)
 
   ! read parameter file
   call ap%read(fname)
-  ! ap%output%is_save_initial_model = .false.
 
   ! intialize logger
-  call setuplog()
+  call setuplog(ap%output%log_level)
 
   ! read dispersion data
   if (ap%data%vel_type(1)) call sr_ph%read(type=0)
@@ -73,7 +70,7 @@ program surfatt_cb_fwd
   call am%write('target_model')
 
   ! do forward
-  call att%do_forward()
+  call att%do_forward(max_noise=max_noise)
 
   ! MPI finish
   call finalize_mpi()

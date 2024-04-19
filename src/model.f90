@@ -19,27 +19,25 @@ module model
   use decomposer, amd => att_mesh_decomposer_global
   use utils
   use hdf5_interface
-  ! use stdlib_math, only: arange, linspace
-  ! use stdlib_io_npy, only: load_npy
-  ! use stdlib_io, only: savetxt
   use surfker, only: fwdsurf1d, depthkernel1d
   use setup_att_log
   implicit none
 
-  integer :: win_vs3d, win_vp3d, win_rho3d, &
+  integer :: win_vs3d, win_vp3d, win_rho3d,win_vs1d, &
              win_vs3d_opt, win_vp3d_opt, win_rho3d_opt
   real(kind=dp), dimension(:), private, allocatable              :: anch, n_pi
   
   type, public :: att_model
     real(kind=dp)                                          :: d_xyz(3)
     integer                                                :: n_xyz(3)
-    real(kind=dp), dimension(:), allocatable               :: xgrids, ygrids, zgrids, vs1d
+    real(kind=dp), dimension(:), allocatable               :: xgrids, ygrids, zgrids
+    real(kind=dp), dimension(:), pointer                   :: vs1d
     real(kind=dp), dimension(:,:), allocatable             :: xinv, yinv, zinv, topo
     real(kind=dp), dimension(:,:,:), pointer               :: vs3d, vp3d, rho3d
     real(kind=dp), dimension(:,:,:), pointer               :: vs3d_opt, vp3d_opt, rho3d_opt
     integer, dimension(:,:), allocatable                   :: igrid
     character(MAX_NAME_LEN), private                       :: module='MODEL'
-    integer                                                :: grid_istart, grid_iend
+    ! integer                                                :: grid_istart, grid_iend
     ! integer, dimension(:), allocatable, public             :: grid_local_index
     contains
     procedure :: init => initialize_model, write => write_model
@@ -58,28 +56,20 @@ module model
 
     this%d_xyz = ap%domain%interval
     this%zgrids = arange(ap%domain%depth(1),ap%domain%depth(2),this%d_xyz(3))
-    xbeg = minval(staall%stx) - ap%domain%num_grid_margin*this%d_xyz(1)
-    xend = maxval(staall%stx) + ap%domain%num_grid_margin*this%d_xyz(1)
-    ybeg = minval(staall%sty) - ap%domain%num_grid_margin*this%d_xyz(2)
-    yend = maxval(staall%sty) + ap%domain%num_grid_margin*this%d_xyz(2)
+    xbeg = minval(staall%stlo) - ap%domain%num_grid_margin*this%d_xyz(1)
+    xend = maxval(staall%stlo) + ap%domain%num_grid_margin*this%d_xyz(1)
+    ybeg = minval(staall%stla) - ap%domain%num_grid_margin*this%d_xyz(2)
+    yend = maxval(staall%stla) + ap%domain%num_grid_margin*this%d_xyz(2)
     this%xgrids = arange(xbeg, xend, this%d_xyz(1))
     this%ygrids = arange(ybeg, yend, this%d_xyz(2))
     this%n_xyz = [size(this%xgrids), size(this%ygrids), size(this%zgrids)]
     write(msg, '(a,3i4)') 'Model grids: nx,ny,nz: ', this%n_xyz
     call write_log(msg,1,this%module)
+    write(msg, '(a,f0.4,", ",f0.4)') 'Lon range: ', xbeg, xend
+    call write_log(msg,1,this%module)
+    write(msg, '(a,f0.4,", ",f0.4)') 'Lat range: ', ybeg, yend
+    call write_log(msg,1,this%module)
     call this%get_inv_grids()
-
-    this%igrid = zeros(this%n_xyz(1)*this%n_xyz(2), 2)
-    n = 1
-    do i = 1, this%n_xyz(1)
-      do j = 1, this%n_xyz(2)
-        this%igrid(n, 1) = i
-        this%igrid(n, 2) = j
-        n = n + 1
-      enddo
-    enddo
-    call scatter_all_i(this%n_xyz(1)*this%n_xyz(2),&
-                       mysize, myrank,this%grid_istart,this%grid_iend)
     call amd%init(this%n_xyz(1), this%n_xyz(2))
     call synchronize_all()
 
@@ -87,45 +77,51 @@ module model
 
   subroutine get_init_model(this)
     class(att_model), intent(inout) :: this
-    integer, parameter :: iter_num=30
     integer :: i, j, ier, niter
     character(len=:), allocatable :: msger
-    real(kind=dp), dimension(iter_num) :: misfits
+    real(kind=dp), dimension(:), allocatable :: misfits
     real(kind=dp), dimension(:,:,:), allocatable :: vstmp
 
     call prepare_shm_array_dp_3d(this%vs3d, this%n_xyz(1), this%n_xyz(2), this%n_xyz(3), win_vs3d)
     call prepare_shm_array_dp_3d(this%vp3d, this%n_xyz(1), this%n_xyz(2), this%n_xyz(3), win_vp3d)
     call prepare_shm_array_dp_3d(this%rho3d, this%n_xyz(1), this%n_xyz(2), this%n_xyz(3), win_rho3d)
-    this%vs1d = linspace(ap%inversion%vel_range(1), ap%inversion%vel_range(2), this%n_xyz(3))
-    if (ap%inversion%init_model_type == 1) then
-      if (myrank == 0) then
-        call this%inv1d(iter_num, this%vs1d, niter, misfits)
-      endif
-      call synchronize_all()
-      call bcast_all_dp(this%vs1d, this%n_xyz(3))
-    elseif (ap%inversion%init_model_type == 2) then
-      if (myrank==0) then
-        ! call load_npy(ap%inversion%init_model_path, vstmp, ier, msger)
+    call prepare_shm_array_dp_1d(this%vs1d, this%n_xyz(3), win_vs1d)
+    ! this%vs1d = linspace(ap%inversion%vel_range(1), ap%inversion%vel_range(2), this%n_xyz(3))
+    if (myrank == 0) then
+      this%vs1d = linspace(ap%inversion%vel_range(1), ap%inversion%vel_range(2), this%n_xyz(3))
+      if (ap%inversion%init_model_type == 1) then
+        call this%inv1d(this%vs1d, niter, misfits)
+      elseif (ap%inversion%init_model_type == 2) then
         call h5read(ap%inversion%init_model_path, '/vs', vstmp)
+        if (any(shape(vstmp) /= this%n_xyz)) then
+          write(*,*) 'Shape of '//trim(ap%inversion%init_model_path)//' dose not match with' //&
+                     ' shape of computational domain.'
+          stop
+        endif
         do i = 1, this%n_xyz(3)
           this%vs1d(i) = sum(vstmp(:,:,i))/(this%n_xyz(1)*this%n_xyz(2))
         enddo
         this%vs3d = vstmp
+      elseif(ap%inversion%init_model_type /= 0) then
+        call write_log('Unknown initial model type, only valid in [0,1,2]',3,this%module)
+        stop
       endif
-    endif
-    if (ap%inversion%init_model_type < 2 .and. myrank == 0) then
-      do i = 1, this%n_xyz(1)
-        do j = 1, this%n_xyz(2)
-          this%vs3d(i, j, :) = this%vs1d
+      if (ap%inversion%init_model_type < 2) then
+        do i = 1, this%n_xyz(1)
+          do j = 1, this%n_xyz(2)
+            this%vs3d(i, j, :) = this%vs1d
+          enddo
         enddo
-      enddo
-    endif
-    if (myrank == 0) then
+      endif
       this%vp3d = empirical_vp(this%vs3d)
       this%rho3d = empirical_rho(this%vp3d)
     endif
     call synchronize_all()
-  end subroutine get_init_model
+    call sync_from_main_rank(this%vs3d, this%n_xyz(1), this%n_xyz(2), this%n_xyz(3))
+    call sync_from_main_rank(this%vp3d, this%n_xyz(1), this%n_xyz(2), this%n_xyz(3))
+    call sync_from_main_rank(this%rho3d, this%n_xyz(1), this%n_xyz(2), this%n_xyz(3))
+    call sync_from_main_rank(this%vs1d, this%n_xyz(3))
+      end subroutine get_init_model
 
   subroutine get_inv_grids(this)
     class(att_model), intent(inout) :: this
@@ -164,31 +160,30 @@ module model
     do i = 1, nset
       polar = -polar
       this%xinv(:, i) = ixgrids+polar*(i-1)*(ixgrids(2)-ixgrids(1))/(nset+1)
-      ! this%xinv(:, i) = ixgrids+i*(ixgrids(2)-ixgrids(1))/(nset+1)
       this%yinv(:, i) = iygrids+(i-1)*(iygrids(2)-iygrids(1))/(nset+1)
       this%zinv(:, i) = izgrids+(i-1)*zadd
     enddo
   end subroutine get_inv_grids
 
-  subroutine inv1d(this, iter_num, vsinv, niter, misfits)
+  subroutine inv1d(this, vsinv, niter, misfits)
     class(att_model), intent(inout) :: this
     type(srcrec), pointer :: sr
-    integer, intent(in) :: iter_num
-    real(kind=dp), parameter :: minderr = 0.001
+    real(kind=dp), parameter :: minderr = 0.0001
     real(kind=dp), dimension(this%n_xyz(3)), intent(out) :: vsinv
     integer, intent(out) :: niter
-    real(kind=dp), dimension(iter_num), intent(out) :: misfits
+    real(kind=dp), dimension(:), allocatable, intent(out) :: misfits
     real(kind=dp), dimension(this%n_xyz(3)) :: update, sen,update_total
     real(kind=dp), dimension(:,:), allocatable :: sen_vs, sen_vp, sen_rho
     character(len=MAX_STRING_LEN) :: msg
-    real(kind=dp) :: derr, chi
+    real(kind=dp) :: derr, chi, sigma
     integer :: iter, ip, itype
     real(kind=dp), dimension(:),allocatable :: tmp
 
     vsinv = this%vs1d
-    misfits = 0.
+    misfits = zeros(max_iter_1d)
+    sigma = this%zgrids(this%n_xyz(3))/ap%inversion%n_inv_grid(3)/2
     call write_log('Do 1D inverison using averaged surface wave data',1,this%module)
-    do iter = 1, iter_num
+    do iter = 1, max_iter_1d
       update_total = 0.
       do itype = 1, 2
         if (.not. ap%data%vel_type(itype)) cycle
@@ -203,9 +198,6 @@ module model
         sen_vp = zeros(sr%nperiod,this%n_xyz(3))
         sen_rho = zeros(sr%nperiod,this%n_xyz(3))
         tmp = zeros(sr%nperiod)
-        ! call fwdsurf1d(real(vsinv),this%n_xyz(3),ap%data%iwave,&
-        !               ap%data%igr,sr%nperiod,&
-        !               sr%periods,real(this%zgrids),this%d_xyz(3),tmp)
         call fwdsurf1d(vsinv,ap%data%iwave,ap%data%igr,&
                        sr%periods,this%zgrids,tmp)
         chi = 0.5*sum((sr%meanvel-tmp)**2)
@@ -221,8 +213,8 @@ module model
           update = update - sen * (sr%meanvel(ip)-tmp(ip))
         enddo
         update = update / sr%nperiod
+        update = smooth_1(update, this%zgrids, sigma)
         update_total = update_total + update*ap%data%weights(itype)
-        deallocate(sen_vs, sen_vp, sen_rho, tmp)
       enddo
       write(msg,'(a,i0,a,f8.4)') 'Iteration ', iter, ' misfit: ', misfits(iter)
       call write_log(msg,0,this%module)
@@ -292,7 +284,10 @@ module model
       this%vp3d = empirical_vp(this%vs3d)
       this%rho3d = empirical_rho(this%vp3d)
     endif
-    call synchronize_all()  
+    call synchronize_all()
+    call sync_from_main_rank(this%vs3d, this%n_xyz(1), this%n_xyz(2), this%n_xyz(3))
+    call sync_from_main_rank(this%vp3d, this%n_xyz(1), this%n_xyz(2), this%n_xyz(3))
+    call sync_from_main_rank(this%rho3d, this%n_xyz(1), this%n_xyz(2), this%n_xyz(3))
   end subroutine add_pert
 
   subroutine write_model(this, subname)
@@ -307,10 +302,10 @@ module model
       fname = trim(ap%output%output_path)//&
                     '/'//trim(subname)//'.h5'
       call h%open(fname, status='new', action='write')
-      call h%add('/x',this%xgrids)
-      call h%add('/y',this%ygrids)
-      call h%add('/z',this%zgrids)
-      call h%add('/vs',this%vs3d)
+      call h%add('/lon',this%xgrids)
+      call h%add('/lat',this%ygrids)
+      call h%add('/dep',this%zgrids)
+      call h%add('/vs',transpose_3(this%vs3d))
       call h%close()
     endif
     call synchronize_all()    
@@ -322,7 +317,7 @@ module model
     real(kind=dp) :: fitfun(maxanchor),anomfun(maxanchor)
     
     do i = 1,maxanchor
-        anomfun(i) = (sqrt(para(1)**2+para(2)*(anch(i)-1))-para(1))/para(3)
+      anomfun(i) = (sqrt(para(1)**2+para(2)*(anch(i)-1))-para(1))/para(3)
     end do
     fitfun(:) = abs(anomfun(:) - n_pi(1:maxanchor))
   end subroutine dep_anom_fun
@@ -346,7 +341,7 @@ module model
     para = [1,1,1]
     write(msg,'(a,f6.2,a,f3.1,a)') 'Depth anomaly anchor: ', (anch(1)-1)*(this%zgrids(2)-this%zgrids(1)), 'km, ', n_pi(1)*2, 'pi'
     call write_log(trim(msg),0,this%module)
-    do i=2,nz*2+1
+    do i = 2, nz*2+1
       anch(i) = anch(i-1) + (nanomtop-anom_size_inc)/2 + max(i-2,0)*anom_size_inc
       n_pi(i) = n_pi(i-1) + 0.25
       write(msg,'(a,f6.2,a,f3.1,a)') 'Depth anomaly anchor: ', (anch(i)-1)*(this%zgrids(2)-this%zgrids(1)), 'km, ', n_pi(i)*2, 'pi'

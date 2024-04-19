@@ -7,43 +7,42 @@
 !                     Nanyang Technological University
 !                           (c) October 2023
 !   
-!     Changing History: Jan 2024, Initialize Codes
+!     Changing History: Oct 2023, Initialize Codes
 !
 !=====================================================================
 
-program surfatt_tomo2d
+program surfatt_tomo
   use my_mpi
   use para, ap => att_para_global
   use src_rec, sr_gr => src_rec_global_gr, sr_ph => src_rec_global_ph
   use model, am => att_model_global
   use grid, ag_gr => att_grid_global_gr, ag_ph => att_grid_global_ph
   use measadj
-  use tomo2d
+  use tomo
   use setup_att_log, only: setuplog
-  use argparse, only: argparse_tomo2d
-  ! use stdlib_io_npy, only: save_npy
+  use argparse, only: argparse_tomo
 
   implicit none
   
-  type(att_tomo_2d) :: att
+  type(att_tomo) :: att
   character(len=MAX_STRING_LEN) :: fname
   logical :: isfwd
-  integer, dimension(2) :: ncb
-  real(kind=dp) :: pert_vel, hmarg
+  real(kind=dp) :: t0, t1
 
   ! initialize MPI
   call init_mpi()
-  call world_rank(myrank)
-  call world_size(mysize)
+  ! call world_rank(myrank)
+  ! call world_size(mysize)
 
+  call cpu_time(t0)
   ! read command line arguments
-  call argparse_tomo2d(fname, isfwd, ncb, pert_vel, hmarg)
+  call argparse_tomo(fname, isfwd)
 
   ! read parameter file
   call ap%read(fname)
 
   ! intialize logger
-  call setuplog()
+  call setuplog(ap%output%log_level)
 
   ! read dispersion data
   if (ap%data%vel_type(1)) call sr_ph%read(0)
@@ -67,17 +66,21 @@ program surfatt_tomo2d
   endif
 
   ! initial inverison
-  call att%init()
+  call att%init(is_fwd=isfwd)
 
   if (isfwd) then
     ! do forward
-    call att%do_forward(ncb, pert_vel, hmarg)
-    call am%write('target_model')
+    call att%do_forward()
   else
     ! do inversion
     call att%do_inversion()
   endif
 
+  ! calculate CPU time 
+  call cpu_time(t1)
+  write(att%message, '(a,f0.2,a)') 'Elapsed CPU time: ', t1-t0, ' s'
+  call write_log(att%message,1,att%module)
+
   ! MPI finish
   call finalize_mpi()
-end program surfatt_tomo2d
+end program surfatt_tomo

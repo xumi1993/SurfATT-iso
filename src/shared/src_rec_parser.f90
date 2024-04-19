@@ -25,7 +25,10 @@ contains
     integer :: i
   
     call fp%read(fname,header_row=1,status_ok=lerr)
-    if (.not. lerr) stop "No such file of "//trim(fname)
+    if (.not. lerr) then
+      write(*,*) "No such file of "//trim(fname)
+      stop 
+    endif
     
     call fp%get_header(this%header,lerr)
     this%nfield = size(this%header, 1)
@@ -69,7 +72,10 @@ contains
 
     call fp%initialize(enclose_strings_in_quotes=.false.)
     call fp%open(fname,n_cols=this%nfield,status_ok=status_ok)
-    if ( .not. status_ok) stop 'Cannot open '//trim(fname)
+    if ( .not. status_ok) then
+      write(*,*) 'Cannot open '//trim(fname)
+      stop
+    endif
     call fp%add(this%header, trim_str=.true.)
     call fp%next_row()
     do i = 1, this%npath

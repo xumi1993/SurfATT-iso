@@ -188,8 +188,8 @@ module acqui_2d
     if (myrank == 0) then
       gr_name = trim(ap%data%gr_name(this%itype))
       if(this%iter == 0) then
-        call this%h%add('/stx_'//trim(gr_name), this%sr%stations%stx)
-        call this%h%add('/sty_'//trim(gr_name), this%sr%stations%sty)
+        call this%h%add('/stlo_'//trim(gr_name), this%sr%stations%stlo)
+        call this%h%add('/stla_'//trim(gr_name), this%sr%stations%stla)
         call this%h%add('/periods_'//trim(gr_name), this%ag%periods)
         call this%h%add('/x', this%ag%xgrids)
         call this%h%add('/y', this%ag%ygrids)
@@ -208,8 +208,8 @@ module acqui_2d
     if (myrank == 0) then
       call hf%open(this%final_fname, status='new', action='write')
 
-      call hf%add('/stx_'//trim(this%gr_name), this%sr%stations%stx)
-      call hf%add('/sty_'//trim(this%gr_name), this%sr%stations%sty)
+      call hf%add('/stlo_'//trim(this%gr_name), this%sr%stations%stlo)
+      call hf%add('/stla_'//trim(this%gr_name), this%sr%stations%stla)
       call hf%add('/periods_'//trim(this%gr_name), this%ag%periods)
       call hf%add('/x', this%ag%xgrids)
       call hf%add('/y', this%ag%ygrids)
