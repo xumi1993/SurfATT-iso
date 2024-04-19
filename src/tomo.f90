@@ -101,19 +101,29 @@ contains
     call synchronize_all()
   end subroutine initialize_inv
 
-  subroutine do_forward(this)
+  subroutine do_forward(this, max_noise)
     class(att_tomo), intent(inout) :: this
+    real(kind=dp), optional, intent(in) :: max_noise
     type(att_measadj) :: ma
     integer :: i
     character(len=MAX_STRING_LEN) :: fname
     real(kind=dp) :: chi_global
+    logical :: add_noise
 
+    if (present(max_noise)) then
+      add_noise = .true.
+    else
+      add_noise = .false.
+    endif
     call this%reset_opt()
     ! loop for sources
     do itype = 1, 2
       if (.not. ap%data%vel_type(itype)) cycle
       call select_type()
       call aq%forward_simulate(chi_global, .true., .false.)
+      if (myrank == 0 .and. add_noise) then
+        call aq%sr%add_random_noise(max_noise)
+      endif
       write(fname, '(a,"/src_rec_file_forward_",a,".csv")') &
           trim(ap%output%output_path),trim(ap%data%gr_name(itype))
       call aq%sr%to_csv(fname)

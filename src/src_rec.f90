@@ -43,7 +43,7 @@ module src_rec
     character(len=MAX_STRING_LEN)                          :: module = 'SRCREC', message
     contains
     procedure :: read => read_src_rec_file, to_csv             
-    procedure :: get_sta, get_periods, get_mean_vel, get_evt_gather,get_periods_by_src                                           
+    procedure :: get_sta, get_periods, get_mean_vel, get_evt_gather,get_periods_by_src,add_random_noise                                      
   end type SrcRec
 
   type(srcrec), target, public                             :: src_rec_global_ph,src_rec_global_gr
@@ -332,6 +332,15 @@ contains
     stay = this%stla(i)
     stax = this%stlo(i)
   end subroutine get_sta_pos
+
+  subroutine add_random_noise(this, max_noise)
+    class(SrcRec), intent(inout) :: this
+    real(kind=dp), intent(in) :: max_noise
+    integer :: i
+
+    this%tt_fwd = this%tt_fwd + randn(this%npath)*max_noise
+    this%vel = this%dist/this%tt
+  end subroutine add_random_noise
 
   subroutine merge_sta()
     integer :: i, j, nsta, nph, ngr

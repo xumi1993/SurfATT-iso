@@ -28,6 +28,14 @@ module utils
   public :: ones
   private :: ones1, ones2, ones3
 
+  interface randu
+    module procedure randu0, randu1, randu2, randu3
+  end interface randu
+
+  interface randn
+    module procedure randn0, randn1, randn2, randn3
+  end interface randn
+
   interface diff
     module procedure diff1, diff2
   end interface diff
@@ -336,6 +344,158 @@ end function
     return
   end function ones3
 
+!=======================================================================
+! randu
+!-----------------------------------------------------------------------
+! randu generates uniformly distributed random numbers.
+!
+! Syntax
+!-----------------------------------------------------------------------
+! x = randu()
+! x = randu(dim1)
+! A = randu(dim1, dim2)
+! X = randu(dim1, dim2, dim3)
+!
+! Description
+!-----------------------------------------------------------------------
+! x = randu() returns a single uniformly distributed random number in
+! the interval [0,1].
+!
+! x = randu(dim1) returns a dim1 vector of uniformly distributed random
+! numbers.
+!
+! A = randu(dim1, dim2) returns a dim1-by-dim2 matrix of uniformly
+! distributed random numbers.
+!
+! X = randu(dim1, dim2, dim3) returns a dim1-by-dim2-by-dim3
+! 3-dimensional matrix of uniformly distributed random numbers.
+!
+! Examples
+!-----------------------------------------------------------------------
+! x = randu()
+!     0.383413825
+!
+! x = randu(5)*2 - 1
+!     0.640258908  -0.873707294   0.787327528
+!=======================================================================
+
+  real(kind = DPRE) function randu0()
+    call random_number(randu0)
+    return
+  end function randu0
+
+  function randu1(dim1)
+    real(kind = DPRE), dimension(:), allocatable :: randu1
+    integer(kind = IPRE), intent(in) :: dim1
+
+    allocate(randu1(dim1))
+    call random_number(randu1)
+    return
+  end function randu1
+
+  function randu2(dim1, dim2)
+    real(kind = DPRE), dimension(:,:), allocatable :: randu2
+    integer(kind = IPRE), intent(in) :: dim1, dim2
+
+    allocate(randu2(dim1, dim2))
+    call random_number(randu2)
+    return
+  end function randu2
+
+  function randu3(dim1, dim2, dim3)
+    real(kind = DPRE), dimension(:,:,:), allocatable :: randu3
+    integer(kind = IPRE), intent(in) :: dim1, dim2, dim3
+
+    allocate(randu3(dim1, dim2, dim3))
+    call random_number(randu3)
+    return
+  end function randu3
+
+!=======================================================================
+! randn
+!-----------------------------------------------------------------------
+! randn generates normally distributed random numbers using polar
+! Box-Muller algorithm.
+!
+! Syntax
+!-----------------------------------------------------------------------
+! x = randn()
+! x = randn(dim1)
+!
+! Description
+!-----------------------------------------------------------------------
+! x = randn() returns a single normally distributed random number with
+! mean 0 and standard deviation 1.
+!
+! x = randn(dim1) returns a dim1 vector of normally distributed random
+! numbers.
+!
+! A = randn(dim1, dim2) returns a dim1-by-dim2 matrix of normally
+! distributed random numbers.
+!
+! X = randn(dim1, dim2, dim3) returns a dim1-by-dim2-by-dim3
+! 3-dimensional matrix of normally distributed random numbers.
+!
+! Examples
+!-----------------------------------------------------------------------
+! x = randn(3)
+!     -1.22003853  -0.211721316   0.522971511
+!=======================================================================
+
+  real(kind = DPRE) function randn0()
+    real(kind = RPRE) :: u, v, s
+
+    do
+      u = 2.*randu() - 1.
+      v = 2.*randu() - 1.
+      s = u*u + v*v
+      if ( (s .gt. 0.) .and. (s .lt. 1.) ) exit
+    end do
+    randn0 = u * sqrt( -2.0d0 * log(s) / s )
+    return
+  end function randn0
+
+  function randn1(dim1)
+    real(kind = DPRE), dimension(:), allocatable :: randn1
+    integer(kind = IPRE), intent(in) :: dim1
+    integer(kind = IPRE) :: i
+
+    allocate(randn1(dim1))
+    do i = 1, dim1
+      randn1(i) = randn0()
+    end do
+    return
+  end function randn1
+
+  function randn2(dim1, dim2)
+    real(kind = DPRE), dimension(:,:), allocatable :: randn2
+    integer(kind = IPRE), intent(in) :: dim1, dim2
+    integer(kind = IPRE) :: i, j
+
+    allocate(randn2(dim1, dim2))
+    do i = 1, dim1
+      do j = 1, dim2
+        randn2(i,j) = randn()
+      end do
+    end do
+    return
+  end function randn2
+
+  function randn3(dim1, dim2, dim3)
+    real(kind = DPRE), dimension(:,:,:), allocatable :: randn3
+    integer(kind = IPRE), intent(in) :: dim1, dim2, dim3
+    integer(kind = IPRE) :: i, j, k
+
+    allocate(randn3(dim1, dim2, dim3))
+    do i = 1, dim1
+      do j = 1, dim2
+        do k = 1, dim3
+          randn3(i,j,k) = randn()
+        end do
+      end do
+    end do
+    return
+  end function randn3
 
 !=======================================================================
 ! diff
@@ -608,10 +768,6 @@ end function
     return
   end function randi0_0
 
-  real(kind = DPRE) function randu0()
-    call random_number(randu0)
-    return
-  end function randu0
 !=======================================================================
 ! interp1
 !-----------------------------------------------------------------------
