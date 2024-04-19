@@ -819,13 +819,13 @@ end function
 
   pure function transpose_3(x) result(y)
     real(kind = DPRE), dimension(:,:,:), intent(in) :: x
-    real(kind = DPRE), dimension(size(x,2), size(x,1), size(x,3)) :: y
+    real(kind = DPRE), dimension(size(x,3), size(x,2), size(x,1)) :: y
     integer(kind = IPRE) :: i, j, k
 
     do i = 1, size(x,1)
       do j = 1, size(x,2)
         do k = 1, size(x,3)
-          y(j,i,k) = x(i,j,k)
+          y(k,j,i) = x(i,j,k)
         end do
       end do
     end do
