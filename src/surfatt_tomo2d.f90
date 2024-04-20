@@ -30,12 +30,12 @@ program surfatt_tomo2d
   logical :: isfwd
   integer, dimension(2) :: ncb
   real(kind=dp) :: pert_vel, hmarg
+  real(kind=dp) :: t0, t1
 
   ! initialize MPI
   call init_mpi()
-  ! call world_rank(myrank)
-  ! call world_size(mysize)
 
+  call cpu_time(t0)
   ! read command line arguments
   call argparse_tomo2d(fname, isfwd, ncb, pert_vel, hmarg)
 
@@ -72,11 +72,15 @@ program surfatt_tomo2d
   if (isfwd) then
     ! do forward
     call att%do_forward(ncb, pert_vel, hmarg)
-    call am%write('target_model')
   else
     ! do inversion
     call att%do_inversion()
   endif
+
+  ! calculate CPU time 
+  call cpu_time(t1)
+  write(att%message, '(a,f0.2,a)') 'Elapsed CPU time: ', t1-t0, ' s'
+  call write_log(att%message,1,att%module)
 
   ! MPI finish
   call finalize_mpi()

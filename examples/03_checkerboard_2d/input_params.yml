@@ -1,0 +1,42 @@
+
+#######################################
+# data parameters
+#######################################
+data:
+  # src_rec_file_ph: src_rec_file_ph.csv
+  # src_rec_file_gr: src_rec_file_gr.csv
+  src_rec_file_ph: OUTPUT_FILES/src_rec_file_forward_ph.csv
+  # src_rec_file_gr: OUTPUT_FILES/src_rec_file_forward_gr.csv
+  iwave: 2 # 1 Love wave, 2 Rayleigh wave
+  vel_type: [True, False] # use phase velocity, group velocity or both
+  weights: [0.5, 0.5] # weights for phase and group velocity
+
+output:
+  output_path: OUTPUT_FILES/ # path to save output files
+  log_level: 1 # 0 debug mode, 1 verbose mode
+
+domain:
+  depth: [0, 10] # depth range in km
+  interval: [0.02, 0.024, 1] # x, y, z in km
+  num_grid_margin: 5 # number of grid margin
+
+topo:
+  is_consider_topo: False # whether consider topography
+  topo_file: /path/to/topo.grd # Path to local elevation file.
+  wavelen_factor: 5
+
+inversion:
+  ncomponents: 5 # number of multiple grid
+  n_inv_grid: [10,11,8]
+  # Initial model
+  init_model_type: 0 # 0: increase from v0 to v1; 1: 1D inversion for average tt; 2: use a 3D vs model
+  vel_range: [1.8, 4.2]
+  init_model_path: /path/to/init_mod.h5 # Path to initial model. Only valid in init_model_type: 2
+  # Inversion parameters
+  niter: 30 # max iterations
+  min_derr: 0.001 # minimum error change
+  max_sub_niter: 10 # max sub iterations
+  optim_method: 0 # 0: SD; 1: Halving step
+  step_length: 0.02 # starting step length
+  maxshrink: 0.6 # max step length decent
+  kdensity_coe: 0 # Kdensity_coe is used to rescale the final kernel:  kernel -> kernel / pow(density of kernel, Kdensity_coe).

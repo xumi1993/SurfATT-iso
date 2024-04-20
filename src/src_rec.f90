@@ -111,6 +111,7 @@ contains
       this%staname = srr%staname
       this%evtname = srr%evtname
       this%header = srr%header
+      this%tt_fwd = 0._dp
     endif
     call synchronize_all()
 

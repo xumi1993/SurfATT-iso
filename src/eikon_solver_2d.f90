@@ -1479,59 +1479,59 @@ subroutine locate_within_cube(xx, yy, zz, nx, ny, nz, xvel, yvel, zvel, &
     iloc = 0
     notfindx = .true.
     do while (notfindx .and. i1 .gt. 0 .and. i1 .lt. nx)
-    i2 = i1 + 1
-    if (xx .lt. xvel(i1)) then
-    i1 = i1 - 1
-    else
-    if (xx .le. xvel(i2)) then
-    notfindx = .false.
-    wx = (xx - xvel(i1)) / (xvel(i2) - xvel(i1))
-    else
-    i1 = i1 + 1
-    end if
-    end if
+        i2 = i1 + 1
+        if (xx .lt. xvel(i1)) then
+            i1 = i1 - 1
+        else
+            if (xx .le. xvel(i2)) then
+                notfindx = .false.
+                wx = (xx - xvel(i1)) / (xvel(i2) - xvel(i1))
+            else
+                i1 = i1 + 1
+            end if
+        end if
     end do
 
     notfindy = .true.
     do while (notfindy .and. j1 .gt. 0 .and. j1 .lt. ny)
-    j2 = j1 + 1
-    if (yy .lt. yvel(j1)) then
-    j1 = j1 - 1
-    else
-    if (yy .le. yvel(j2)) then
-    notfindy = .false.
-    wy = (yy - yvel(j1)) / (yvel(j2) - yvel(j1))
-    else
-    j1 = j1 + 1
-    end if
-    end if
+        j2 = j1 + 1
+        if (yy .lt. yvel(j1)) then
+            j1 = j1 - 1
+        else
+            if (yy .le. yvel(j2)) then
+                notfindy = .false.
+                wy = (yy - yvel(j1)) / (yvel(j2) - yvel(j1))
+            else
+                j1 = j1 + 1
+            end if
+        end if
     end do
 
     notfindz = .true.
     do while (notfindz .and. k1 .gt. 0 .and. k1 .lt. nz)
-    k2 = k1 + 1
-    if (zz .lt. zvel(k1)) then
-    k1 = k1 - 1
-    else
-    if (zz .le. zvel(k2)) then
-    notfindz = .false.
-    wz = (zz - zvel(k1)) / (zvel(k2) - zvel(k1))
-    else
-    k1 = k1 + 1
-    end if
-    end if
+        k2 = k1 + 1
+        if (zz .lt. zvel(k1)) then
+            k1 = k1 - 1
+        else
+            if (zz .le. zvel(k2)) then
+                notfindz = .false.
+                wz = (zz - zvel(k1)) / (zvel(k2) - zvel(k1))
+            else
+                k1 = k1 + 1
+            end if
+        end if
     end do
 
     if ((.not.notfindx) .and. (.not.notfindy) .and. (.not.notfindz)) then
-    iloc  = 1
-    wt(1) = (1.0 - wx) * (1.0 - wy) * (1.0 - wz)
-    wt(2) = (1.0 - wx) * wy * (1.0 - wz)
-    wt(3) = wx * wy * (1.0 - wz)
-    wt(4) = wx * (1.0 - wy) * (1.0 - wz)
-    wt(5) = (1.0 - wx) * (1.0 - wy) * wz
-    wt(6) = (1.0 - wx)* wy * wz
-    wt(7) = wx * wy * wz
-    wt(8) = wx * (1.0 - wy) * wz
+        iloc  = 1
+        wt(1) = (1.0 - wx) * (1.0 - wy) * (1.0 - wz)
+        wt(2) = (1.0 - wx) * wy * (1.0 - wz)
+        wt(3) = wx * wy * (1.0 - wz)
+        wt(4) = wx * (1.0 - wy) * (1.0 - wz)
+        wt(5) = (1.0 - wx) * (1.0 - wy) * wz
+        wt(6) = (1.0 - wx)* wy * wz
+        wt(7) = wx * wy * wz
+        wt(8) = wx * (1.0 - wy) * wz
     end if
 
     return
