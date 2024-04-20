@@ -159,10 +159,9 @@ module acqui_2d
     call synchronize_all()
   end subroutine prepare_fwd
 
-  subroutine prepare_fwd_linesearch(this, xi_new, eta_new)
+  subroutine prepare_fwd_linesearch(this)
     class(att_acqui_2d), intent(inout) :: this
-    real(kind=dp), dimension(:,:,:), allocatable :: update_s, update_xi, update_eta
-    real(kind=dp), dimension(:,:,:), allocatable :: xi_new, eta_new
+    real(kind=dp), dimension(:,:,:), allocatable :: update_s
     
     if (myrank == 0) then
       update_s = zeros(this%ag%nperiod, this%ag%nx, this%ag%ny)
@@ -213,7 +212,6 @@ module acqui_2d
       write(secname,'(a,i3.3)') '/vel'//trim(gr_name)//'_',this%iter 
       call this%h%add(secname, transpose_3(this%svel))
     endif
-    call synchronize_all()
   end subroutine att_acqui_2d_write_iter
 
   subroutine att_acqui_2d_write_model(this)

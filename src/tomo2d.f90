@@ -26,7 +26,8 @@ module tomo2d
     character(len=MAX_STRING_LEN)                          :: message
     contains
     procedure :: init => init_tomo_2d, do_forward, initialize_inv, do_inversion, &
-                 post_proc_eikokernel, linesearch, optimize, forward_simulate,break_iter
+                 post_proc_eikokernel, linesearch, optimize, forward_simulate,break_iter,&
+                 steepest_descent
   end type
 
   type(att_acqui_2d), pointer, private                     :: acqui
@@ -111,7 +112,7 @@ contains
         if (myrank==0) then
           if (acqui%iter == 1) acqui%chi0 = chi_global
           acqui%misfits(acqui%iter) = chi_global
-          write(this%message, '(a,F0.2," (",F0.2,"%)")') 'Total misfit of '//&
+          write(this%message, '(a,F0.4," (",F0.4,"%)")') 'Total misfit of '//&
                 trim(ap%data%gr_name(itype))//': ',&
                 chi_global,100*chi_global/acqui%chi0
           ! write synthetic tt to file
@@ -119,8 +120,9 @@ contains
               //'src_rec_file_forward_'//trim(ap%data%gr_name(itype))//'_',acqui%iter-1
           call write_log(this%message,1,this%module)
           call this%break_iter(isbreak)
-          if(isbreak) exit
         endif ! myrank==0
+        call bcast_all(isbreak)
+        if (isbreak) exit
         call acqui%sr%to_csv(trim(fname))
         ! optimization
         call this%optimize()
@@ -219,22 +221,47 @@ contains
       do i = istart, iend
         write(this%message, '(a,F0.4,a)') 'Optimization for period: ',acqui%ag%periods(i),'s' 
         call write_log(this%message,0,this%module)
-        sigma = km2deg*ap%topo%wavelen_factor*sum(acqui%svel(i,:,:))/size(acqui%svel(i,:,:))
+        sigma = km2deg*ap%topo%wavelen_factor*acqui%sr%periods(i)*sum(acqui%svel(i,:,:))/size(acqui%svel(i,:,:))
         ker_s_local(i,:,:)  = gaussian_smooth_geo_2(acqui%adj_s(i,:,:),acqui%ag%xgrids,acqui%ag%ygrids,sigma)
         ! acqui%ker_s(i,:,:) = tmp
       enddo
     endif
     call synchronize_all()
     call sum_all(ker_s_local, acqui%ker_s,acqui%sr%nperiod,acqui%ag%nx,acqui%ag%ny)
-    ! line search
-    call this%linesearch()
+    if (ap%inversion%optim_method == 0) then
+      ! steepest descent
+      call this%steepest_descent()
+    else
+      ! line search
+      call this%linesearch()
+    endif
   end subroutine optimize
+
+  subroutine steepest_descent(this)
+    class(att_tomo_2d), intent(inout) :: this
+    real(kind=dp), dimension(:,:,:), allocatable :: gradient
+  
+    call write_log('Optimizing using steepest descent...',1,this%module)
+    if (acqui%misfits(acqui%iter) > acqui%misfits(acqui%iter-1)) then
+      write(this%message, '(a,f6.4,a,f6.4)') 'Misfit increased from ',&
+            acqui%misfits(acqui%iter-1),' to ',acqui%misfits(acqui%iter)
+      call write_log(this%message,1,this%module)
+      acqui%updatemax = acqui%updatemax*ap%inversion%maxshrink
+      write(this%message, '(a,F0.4)') 'Shrink step length to ',acqui%updatemax
+      call write_log(this%message, 1, this%module)
+    endif
+    if (local_rank == 0) then
+      gradient = acqui%ker_s/maxval(abs(acqui%ker_s))
+      acqui%svel = acqui%svel*(1+acqui%updatemax * gradient)
+    endif
+    call synchronize_all()
+
+  end subroutine steepest_descent
 
   subroutine linesearch(this)
     class(att_tomo_2d), intent(inout) :: this
     type(att_measadj) :: ma
-    real(kind=dp), dimension(:,:,:), allocatable :: update_s, update_xi, update_eta,&
-                                                    svel_new, xi_new, eta_new
+    real(kind=dp), dimension(:,:,:), allocatable :: update_s,svel_new
     real(kind=dp) :: chi0, chi_local, chi_global, chi, qpt
     real(kind=dp), dimension(:,:), allocatable :: adj
     integer :: i, j, sit
@@ -246,7 +273,7 @@ contains
     do sit = 1, ap%inversion%max_sub_niter
       write(this%message, '(a,i0,a,f6.4)') 'Sub-iteration: ',sit, 'th, step length: ',acqui%updatemax
       call write_log(this%message,1,this%module)
-      call acqui%prepare_fwd_linesearch(xi_new, eta_new)
+      call acqui%prepare_fwd_linesearch()
       call this%forward_simulate(chi_global, .false., .false.)
       call bcast_all(chi_global)
       if (chi_global > chi0) then
@@ -259,7 +286,7 @@ contains
         exit
       endif
     enddo
-    if (myrank == 0) then
+    if (local_rank == 0) then
       acqui%svel = acqui%ag%svel
     endif
     call synchronize_all()    
@@ -275,7 +302,7 @@ contains
       misfit_prev = sum(acqui%misfits(acqui%iter-iter_store:acqui%iter-1))/iter_store
       misfit_curr = sum(acqui%misfits(acqui%iter-iter_store+1:acqui%iter))/iter_store
       misfit_diff = (misfit_prev-misfit_curr)/misfit_prev
-      write(this%message,'(a,i2,a,F6.4)') 'Misfit change of last', &
+      write(this%message,'(a,i2,a,F10.8)') 'Misfit change of last', &
             iter_store,' iterations: ',misfit_diff
       call write_log(this%message,1,this%module)
       if (abs(misfit_diff) < ap%inversion%min_derr) isbreak = .true.
