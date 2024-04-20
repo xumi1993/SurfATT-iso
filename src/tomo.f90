@@ -248,7 +248,7 @@ contains
     character(len=MAX_STRING_LEN) :: secname
 
     call write_log('Optimizing using halving stepping...',1,this%module)
-    call write_gradient()
+    if (myrank == 0) call write_gradient()
     do sit = 1, ap%inversion%max_sub_niter
       call write_log('Starting line search.',1,this%module)
       chi = 0

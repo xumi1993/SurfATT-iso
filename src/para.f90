@@ -219,6 +219,7 @@ module para
     call bcast_all(this%inversion%maxshrink)
     call bcast_all(this%inversion%kdensity_coe)
     call bcast_all(this%inversion%max_sub_niter)
+    call bcast_all(this%inversion%optim_method)
     
     call synchronize_all()
 
