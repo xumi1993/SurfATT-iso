@@ -54,6 +54,10 @@ contains
         call write_log(errmsg, 3, this%module)
         call exit_MPI(myrank, errmsg)
       endif
+      if (ap%inversion%sigma_2d == 0.0_dp) then
+        call write_log('Please setup sigma_2d for smoothing.',3,this%module)
+        stop
+      endif
     endif
     call synchronize_all()
   end subroutine init_tomo_2d
@@ -221,9 +225,9 @@ contains
       do i = istart, iend
         write(this%message, '(a,F0.4,a)') 'Optimization for period: ',acqui%ag%periods(i),'s' 
         call write_log(this%message,0,this%module)
-        sigma = km2deg*ap%topo%wavelen_factor*acqui%sr%periods(i)*sum(acqui%svel(i,:,:))/size(acqui%svel(i,:,:))
+        ! sigma = km2deg*ap%topo%wavelen_factor*acqui%sr%periods(i)*sum(acqui%svel(i,:,:))/size(acqui%svel(i,:,:))
+        sigma = ap%inversion%sigma_2d
         ker_s_local(i,:,:)  = gaussian_smooth_geo_2(acqui%adj_s(i,:,:),acqui%ag%xgrids,acqui%ag%ygrids,sigma)
-        ! acqui%ker_s(i,:,:) = tmp
       enddo
     endif
     call synchronize_all()

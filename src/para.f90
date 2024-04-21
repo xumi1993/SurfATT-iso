@@ -53,7 +53,7 @@ module para
                                                               optim_method=0
     character(len=MAX_STRING_LEN)                          :: init_model_path
     real(kind=dp)                                          :: vel_range(2), step_length, min_derr=0.001,&
-                                                              kdensity_coe=0.5, maxshrink=0.8
+                                                              kdensity_coe=0.5, maxshrink=0.8, sigma_2d=0.
   end type para_inversion
 
   type, public :: att_para
@@ -176,6 +176,7 @@ module para
         if (associated(io_err)) call exit_mpi(myrank, trim(io_err%message))
         this%inversion%max_sub_niter = inversion%get_integer('max_sub_niter',error=io_err)
         this%inversion%kdensity_coe = inversion%get_real('kdensity_coe',error=io_err)
+        this%inversion%sigma_2d = inversion%get_real('sigma_2d',error=io_err)
 
       end select
       call root%finalize()
@@ -219,6 +220,8 @@ module para
     call bcast_all(this%inversion%maxshrink)
     call bcast_all(this%inversion%kdensity_coe)
     call bcast_all(this%inversion%max_sub_niter)
+    call bcast_all(this%inversion%optim_method)
+    call bcast_all(this%inversion%sigma_2d)
     
     call synchronize_all()
 

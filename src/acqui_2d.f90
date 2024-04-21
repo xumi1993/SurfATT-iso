@@ -48,8 +48,8 @@ module acqui_2d
       this%ag => ag_gr
       this%sr => sr_gr
     endif
-    this%model_fname = trim(ap%output%output_path)//"/"//'model_iter'//trim(this%gr_name)//'.h5'
-    this%final_fname = trim(ap%output%output_path)//"/"//'final_model'//trim(this%gr_name)//'.h5'
+    this%model_fname = trim(ap%output%output_path)//"/"//'model_iter_'//trim(this%gr_name)//'.h5'
+    this%final_fname = trim(ap%output%output_path)//"/"//'final_model_'//trim(this%gr_name)//'.h5'
     
     call this%allocate_shm_arrays()
     call this%init_model()
@@ -205,9 +205,9 @@ module acqui_2d
       if(this%iter == 0) then
         call this%h%add('/stlo', this%sr%stations%stlo)
         call this%h%add('/stla', this%sr%stations%stla)
-        call this%h%add('/periods', this%ag%periods)
-        call this%h%add('/x', this%ag%xgrids)
-        call this%h%add('/y', this%ag%ygrids)
+        call this%h%add('/period', this%ag%periods)
+        call this%h%add('/lon', this%ag%xgrids)
+        call this%h%add('/lat', this%ag%ygrids)
       endif
       write(secname,'(a,i3.3)') '/vel'//trim(gr_name)//'_',this%iter 
       call this%h%add(secname, transpose_3(this%svel))
@@ -224,9 +224,9 @@ module acqui_2d
 
       call hf%add('/stlo', this%sr%stations%stlo)
       call hf%add('/stla', this%sr%stations%stla)
-      call hf%add('/periods', this%ag%periods)
-      call hf%add('/x', this%ag%xgrids)
-      call hf%add('/y', this%ag%ygrids)
+      call hf%add('/period', this%ag%periods)
+      call hf%add('/lon', this%ag%xgrids)
+      call hf%add('/lat', this%ag%ygrids)
       call hf%add('/vel', transpose_3(this%svel))
       call hf%close()
     endif
