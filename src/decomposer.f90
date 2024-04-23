@@ -138,7 +138,7 @@ contains
 
   end subroutine collect_grid
 
-  subroutine collect_sen(this, sen_vs, sen_vp, sen_rho, gathered_sen_vp, gathered_sen_vs, gathered_sen_rho)
+  subroutine collect_sen(this, sen_vs, sen_vp, sen_rho, gathered_sen_vs, gathered_sen_vp, gathered_sen_rho)
     class(att_decomposer), intent(in) :: this
     real(kind=dp), dimension(:,:,:,:), intent(in) :: sen_vs, sen_vp, sen_rho
     real(kind=dp), dimension(:,:,:,:), allocatable :: tmp_sen_vs, tmp_sen_vp, tmp_sen_rho

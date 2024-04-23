@@ -175,13 +175,14 @@ module model
     real(kind=dp), dimension(this%n_xyz(3)) :: update, sen,update_total
     real(kind=dp), dimension(:,:), allocatable :: sen_vs, sen_vp, sen_rho
     character(len=MAX_STRING_LEN) :: msg
-    real(kind=dp) :: derr, chi, sigma
+    real(kind=dp) :: derr, chi, sigma, step_length
     integer :: iter, ip, itype
     real(kind=dp), dimension(:),allocatable :: tmp
 
     vsinv = this%vs1d
     misfits = zeros(max_iter_1d)
-    sigma = this%zgrids(this%n_xyz(3))/ap%inversion%n_inv_grid(3)/2
+    step_length = ap%inversion%step_length
+    sigma = 0.68*this%zgrids(this%n_xyz(3))/ap%inversion%n_inv_grid(3)
     call write_log('Do 1D inverison using averaged surface wave data',1,this%module)
     do iter = 1, max_iter_1d
       update_total = 0.
@@ -202,6 +203,9 @@ module model
                        sr%periods,this%zgrids,tmp)
         chi = 0.5*sum((sr%meanvel-tmp)**2)
         misfits(iter) = misfits(iter) + chi
+        if (iter > 1 .and. misfits(iter) > misfits(iter-1)) then
+          step_length = step_length * ap%inversion%maxshrink
+        endif
         call depthkernel1d(vsinv,this%n_xyz(3),ap%data%iwave,&
                             ap%data%igr,sr%nperiod,&
                             sr%periods,this%zgrids,&
@@ -215,6 +219,7 @@ module model
         update = update / sr%nperiod
         update = smooth_1(update, this%zgrids, sigma)
         update_total = update_total + update*ap%data%weights(itype)
+        update_total = step_length * update_total/maxval(abs(update_total))
       enddo
       write(msg,'(a,i0,a,f8.4)') 'Iteration ', iter, ' misfit: ', misfits(iter)
       call write_log(msg,0,this%module)
