@@ -13,7 +13,7 @@ module constants
 
   character(len=MAX_STRING_LEN),parameter :: srfile = 'src_rec_iter.h5'
   character(len=MAX_STRING_LEN),parameter :: modfile = 'model_iter.h5'
-  character(len=MAX_STRING_LEN),parameter :: log_fname='output_attsurf_tomo.log'
+  character(len=MAX_STRING_LEN),parameter :: log_basename='output_attsurf_tomo.log'
 
 
   real(kind=dp), parameter :: precond_thres = 1.0d-4
@@ -32,4 +32,5 @@ module shared_par
   integer :: LID
   integer :: loglevel
   real(kind=dp), dimension(:,:,:), allocatable :: gradient_s
+  character(len=MAX_STRING_LEN) :: log_fname
 end module shared_par

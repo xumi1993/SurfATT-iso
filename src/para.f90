@@ -123,6 +123,7 @@ module para
         output => root%get_dictionary('output', required=.true., error=io_err)
         if (associated(io_err)) call exit_mpi(myrank, trim(io_err%message))
         this%output%output_path = output%get_string('output_path', error=io_err)
+        log_fname = trim(this%output%output_path)//'/'//trim(log_basename)
         loglevel = output%get_integer('log_level', error=io_err)
         if (loglevel == 0) then
           this%output%log_level = debug_level ! in stdlib_logger
