@@ -19,9 +19,6 @@ module para
   use stdlib_logger, only: debug_level, information_level
   implicit none
   
-  integer, public                                          :: LID=50, loglevel
-  character(len=MAX_STRING_LEN)                            :: log_fname='output_attsurf_tomo.log'
-
   ! ---------------------- sections of parameter ------------------
   type, public :: para_data
     character(len=MAX_STRING_LEN)                          :: src_rec_file_ph, src_rec_file_gr
@@ -34,8 +31,7 @@ module para
 
   type para_output
     character(len=MAX_STRING_LEN), public                  :: output_path='OUTPUT_FILES'
-    logical, public                                        :: is_save_initial_model
-    integer, public                                        :: log_level=1
+    integer, public                                        :: log_level=1, verbose_level=1
   end type para_output
 
   type para_domain
@@ -57,7 +53,7 @@ module para
                                                               optim_method=0
     character(len=MAX_STRING_LEN)                          :: init_model_path
     real(kind=dp)                                          :: vel_range(2), step_length, min_derr=0.001,&
-                                                              kdensity_coe=0.5, maxshrink=0.8
+                                                              kdensity_coe=0.5, maxshrink=0.8, sigma_2d=0.
   end type para_inversion
 
   type, public :: att_para
@@ -127,14 +123,14 @@ module para
         output => root%get_dictionary('output', required=.true., error=io_err)
         if (associated(io_err)) call exit_mpi(myrank, trim(io_err%message))
         this%output%output_path = output%get_string('output_path', error=io_err)
-        this%output%is_save_initial_model = output%get_logical('is_save_initial_model', error=io_err)
-        if (associated(io_err)) call exit_mpi(myrank, trim(io_err%message))
+        log_fname = trim(this%output%output_path)//'/'//trim(log_basename)
         loglevel = output%get_integer('log_level', error=io_err)
         if (loglevel == 0) then
           this%output%log_level = debug_level ! in stdlib_logger
         else
           this%output%log_level = information_level
         endif
+        this%output%verbose_level = output%get_integer('verbose_level', error=io_err)
 
         ! read domain section
         domain => root%get_dictionary('domain',required=.true., error=io_err)
@@ -181,6 +177,7 @@ module para
         if (associated(io_err)) call exit_mpi(myrank, trim(io_err%message))
         this%inversion%max_sub_niter = inversion%get_integer('max_sub_niter',error=io_err)
         this%inversion%kdensity_coe = inversion%get_real('kdensity_coe',error=io_err)
+        this%inversion%sigma_2d = inversion%get_real('sigma_2d',error=io_err)
 
       end select
       call root%finalize()
@@ -190,40 +187,42 @@ module para
   
   !---------- broadcast all parameters ------------
     ! broadcast data
-    call bcast_all_singlei(loglevel)
-    call bcast_all_string(this%data%src_rec_file_ph)
-    call bcast_all_string(this%data%src_rec_file_gr)
-    call bcast_all_singlei(this%data%iwave)
-    call bcast_all_singlei(this%data%igr)
-    call bcast_all_ch_array(this%data%gr_name,2,MAX_STRING_LEN)
-    call bcast_all_l_array(this%data%vel_type,2)
+    call bcast_all(loglevel)
+    call bcast_all(this%data%src_rec_file_ph)
+    call bcast_all(this%data%src_rec_file_gr)
+    call bcast_all(this%data%iwave)
+    call bcast_all(this%data%igr)
+    call bcast_all(this%data%gr_name,2,MAX_STRING_LEN)
+    call bcast_all(this%data%vel_type,2)
     ! broadcast output
-    call bcast_all_string(this%output%output_path)
-    call bcast_all_singlel(this%output%is_save_initial_model)
-    call bcast_all_singlei(this%output%log_level)
+    call bcast_all(this%output%output_path)
+    call bcast_all(this%output%log_level)
+    call bcast_all(this%output%verbose_level)
     ! broadcast domain
-    call bcast_all_dp(this%domain%ref_pos, 2)
-    call bcast_all_dp(this%domain%depth, 2)
-    call bcast_all_dp(this%domain%interval, 3)
-    call bcast_all_singledp(this%domain%agl)
-    call bcast_all_singlei(this%domain%num_grid_margin)
+    call bcast_all(this%domain%ref_pos, 2)
+    call bcast_all(this%domain%depth, 2)
+    call bcast_all(this%domain%interval, 3)
+    call bcast_all(this%domain%agl)
+    call bcast_all(this%domain%num_grid_margin)
 
     ! broadcast topo
-    call bcast_all_singlel(this%topo%is_consider_topo)
-    call bcast_all_string(this%topo%topo_file)
-    call bcast_all_singledp(this%topo%wavelen_factor)
+    call bcast_all(this%topo%is_consider_topo)
+    call bcast_all(this%topo%topo_file)
+    call bcast_all(this%topo%wavelen_factor)
     ! broadcast inversion
-    call bcast_all_singlei(this%inversion%ncomponents)
-    call bcast_all_singledp(this%inversion%min_derr)
-    call bcast_all_i(this%inversion%n_inv_grid, 3)
-    call bcast_all_singlei(this%inversion%init_model_type)
-    call bcast_all_string(this%inversion%init_model_path)
-    call bcast_all_dp(this%inversion%vel_range, 2)
-    call bcast_all_singlei(this%inversion%niter)
-    call bcast_all_singledp(this%inversion%step_length)
-    call bcast_all_singledp(this%inversion%maxshrink)
-    call bcast_all_singledp(this%inversion%kdensity_coe)
-    call bcast_all_singlei(this%inversion%max_sub_niter)
+    call bcast_all(this%inversion%ncomponents)
+    call bcast_all(this%inversion%min_derr)
+    call bcast_all(this%inversion%n_inv_grid, 3)
+    call bcast_all(this%inversion%init_model_type)
+    call bcast_all(this%inversion%init_model_path)
+    call bcast_all(this%inversion%vel_range, 2)
+    call bcast_all(this%inversion%niter)
+    call bcast_all(this%inversion%step_length)
+    call bcast_all(this%inversion%maxshrink)
+    call bcast_all(this%inversion%kdensity_coe)
+    call bcast_all(this%inversion%max_sub_niter)
+    call bcast_all(this%inversion%optim_method)
+    call bcast_all(this%inversion%sigma_2d)
     
     call synchronize_all()
 

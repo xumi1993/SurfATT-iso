@@ -1,36 +1,19 @@
 module setup_att_log
-  use para, ap => att_para_global
+  use shared_par
+  use my_mpi
   use stdlib_logger, logger => global_logger
   implicit none
 
 contains
-  ! subroutine initialize_files()
-  !   character(len=MAX_STRING_LEN) :: fname
-  !   integer :: stat
 
-  !   fname = trim(ap%output%output_path)//"/"//trim(modfile)
-  !   open(unit=IOUT, iostat=stat, file=fname, status='old')
-  !   if (stat == 0) close(IOUT, status='delete')
-  !   fname = trim(ap%output%output_path)//'/final_model.h5'
-  !   open(unit=IOUT, iostat=stat, file=fname, status='old')
-  !   if (stat == 0) close(IOUT, status='delete')
-  !   fname = trim(ap%output%output_path)//'/initial_model.h5'
-  !   open(unit=IOUT, iostat=stat, file=fname, status='old')
-  !   if (stat == 0) close(IOUT, status='delete')
-  !   fname = trim(ap%output%output_path)//'/target_model.h5'
-  !   open(unit=IOUT, iostat=stat, file=fname, status='old')
-  !   if (stat == 0) close(IOUT, status='delete')
-  ! end subroutine initialize_files
+  subroutine setuplog(log_level)
+    integer :: stat, log_level
 
-  subroutine setuplog()
-    integer :: stat
-
-    ! if (myrank == 0) then
-    call logger%add_log_file(log_fname, LID, stat=stat)      
-    call logger%configure(level=ap%output%log_level, time_stamp=.true.)
-    ! end
-    call bcast_all_singlei(LID)
-    
+    if (myrank == 0) then
+      call logger%add_log_file(log_fname, LID, stat=stat)      
+      call logger%configure(level=log_level, time_stamp=.true.)
+    endif
+    call synchronize_all()    
   end subroutine setuplog
 
   subroutine write_log(msg, level, module_name)
@@ -66,7 +49,7 @@ contains
       level_msg = 'ERROR'
     endif
 
-    if (myrank == 0 .and. level>0) then
+    if (myrank == 0 .and. level >= loglevel) then
       call logger % log_message( msg,                  &
                                 module = module_name,  &
                                 prefix = trim(level_msg) )

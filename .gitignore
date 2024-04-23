@@ -27,3 +27,8 @@ src_rec_file_rotated.csv
 hawaii*.nc
 gmt.*
 test.ipynb
+pbs_*
+benchmark_*
+slurm-*
+slurm_*
+fort.*

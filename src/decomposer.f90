@@ -1,6 +1,7 @@
 module decomposer
 
   use shared_par
+  use utils
   use para, ap => att_para_global
 
   implicit none
@@ -39,6 +40,10 @@ contains
 
     allocate(this%glob_ix(mysize, 2))
     allocate(this%glob_iy(mysize, 2))
+    this%glob_ix = 0
+    this%glob_iy = 0
+    loc_ix = 0
+    loc_iy = 0
     this%loc_ix_start = 1 + (mod(myrank, this%glob_px)) * (nx / this%glob_px)
     this%loc_ix_end = this%loc_ix_start + (nx / this%glob_px) - 1
     this%loc_iy_start = 1 + myrank / this%glob_px * (ny / this%glob_py)
@@ -48,13 +53,13 @@ contains
     if (mod(nx, this%glob_px) /= 0) then
       myrank_value = mod(myrank, this%glob_px)
       call max_all_all_i(myrank_value, max_rank_x)
-      if (myrank_value==max_rank_x) this%loc_ix_end = this%loc_ix_end + 1
+      if (myrank_value==max_rank_x) this%loc_ix_end = nx
     end if
     if (mod(ny, this%glob_py) /= 0) then
       myrank_value = myrank / this%glob_px
       call max_all_all_i(myrank_value, max_rank_y)
-      if (myrank_value==max_rank_y) this%loc_iy_end = this%loc_iy_end + 1
-    end if
+      if (myrank_value==max_rank_y) this%loc_iy_end = ny
+    end if      
 
     ! local number of cells
     loc_ix(myrank+1, 1) = this%loc_ix_start
@@ -63,8 +68,8 @@ contains
     loc_iy(myrank+1, 2) = this%loc_iy_end
     this%loc_nx = this%loc_ix_end - this%loc_ix_start + 1
     this%loc_ny = this%loc_iy_end - this%loc_iy_start + 1
-    call sum_all_1Darray_i(loc_ix, this%glob_ix, mysize*2)
-    call sum_all_1Darray_i(loc_iy, this%glob_iy, mysize*2)
+    call sum_all(loc_ix, this%glob_ix, mysize, 2)
+    call sum_all(loc_iy, this%glob_iy, mysize, 2)
 
   end subroutine init_decomposer
 
@@ -133,7 +138,7 @@ contains
 
   end subroutine collect_grid
 
-  subroutine collect_sen(this, sen_vs, sen_vp, sen_rho, gathered_sen_vp, gathered_sen_vs, gathered_sen_rho)
+  subroutine collect_sen(this, sen_vs, sen_vp, sen_rho, gathered_sen_vs, gathered_sen_vp, gathered_sen_rho)
     class(att_decomposer), intent(in) :: this
     real(kind=dp), dimension(:,:,:,:), intent(in) :: sen_vs, sen_vp, sen_rho
     real(kind=dp), dimension(:,:,:,:), allocatable :: tmp_sen_vs, tmp_sen_vp, tmp_sen_rho

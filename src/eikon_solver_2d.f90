@@ -792,12 +792,14 @@ subroutine FSM_UW_PS_lonlat_2d(xx_deg,yy_deg,nx,ny,spha,sphb,sphc,T,fun,x0_deg,y
 !f2py   intent(out) :: T
 
     ! ------------------------ convert degree to radian ----------------------
-    do iix=1,nx
-        xx(iix) = xx_deg(iix)/180.0*pi
-    end do
-    do iiy=1,ny
-        yy(iiy) = yy_deg(iiy)/180.0*pi
-    end do
+    ! do iix=1,nx
+    !     xx(iix) = xx_deg(iix)/180.0*pi
+    ! end do
+    ! do iiy=1,ny
+    !     yy(iiy) = yy_deg(iiy)/180.0*pi
+    ! end do
+    xx = xx_deg/180.0*pi
+    yy = yy_deg/180.0*pi
     x0 = x0_deg/180.0*pi
     y0 = y0_deg/180.0*pi
 
@@ -805,12 +807,17 @@ subroutine FSM_UW_PS_lonlat_2d(xx_deg,yy_deg,nx,ny,spha,sphb,sphc,T,fun,x0_deg,y
     dx=xx(2)-xx(1); dy=yy(2)-yy(1);
 
     ! ------------------------ convert a, b, c ----------------------
-    do iix=1,nx
-        do iiy=1,ny
-            a(iix,iiy) = spha(iix,iiy)/(R_earth**2 * cos(yy(iiy))**2)
-            b(iix,iiy) = sphb(iix,iiy)/(R_earth**2)
-            c(iix,iiy) = sphc(iix,iiy)/(R_earth**2 * cos(yy(iiy)))
-        end do
+    ! do iix=1,nx
+    !     do iiy=1,ny
+    !         a(iix,iiy) = spha(iix,iiy)/(R_earth**2 * cos(yy(iiy))**2)
+    !         b(iix,iiy) = sphb(iix,iiy)/(R_earth**2)
+    !         c(iix,iiy) = sphc(iix,iiy)/(R_earth**2 * cos(yy(iiy)))
+    !     end do
+    ! end do
+    do iiy = 1,ny
+        a(:,iiy) = spha(:,iiy)/(R_earth**2 * cos(yy(iiy))**2)
+        b(:,iiy) = sphb(:,iiy)/(R_earth**2)
+        c(:,iiy) = sphc(:,iiy)/(R_earth**2 * cos(yy(iiy)))
     end do
 
     
@@ -894,7 +901,8 @@ subroutine FSM_UW_PS_lonlat_2d(xx_deg,yy_deg,nx,ny,spha,sphb,sphc,T,fun,x0_deg,y
             ! iter 1 x: 1 -> Nx, y: 1 -> Ny
             ! iter 2 x: 1 -> Nx, y: Ny -> 1 
             ! iter 3 x: Nx -> 1, y: 1 -> Ny 
-            ! iter 4 x: Nx -> 1, y: Ny -> 1 
+            ! iter 4 x: Nx -> 1, y: Ny -> 1
+            !DIR$ SIMD
             do iix=x_id1,x_id2,xdirec
                 do iiy=y_id1,y_id2,ydirec
                     if(ischange(iix,iiy)==1) then
@@ -1471,59 +1479,59 @@ subroutine locate_within_cube(xx, yy, zz, nx, ny, nz, xvel, yvel, zvel, &
     iloc = 0
     notfindx = .true.
     do while (notfindx .and. i1 .gt. 0 .and. i1 .lt. nx)
-    i2 = i1 + 1
-    if (xx .lt. xvel(i1)) then
-    i1 = i1 - 1
-    else
-    if (xx .le. xvel(i2)) then
-    notfindx = .false.
-    wx = (xx - xvel(i1)) / (xvel(i2) - xvel(i1))
-    else
-    i1 = i1 + 1
-    end if
-    end if
+        i2 = i1 + 1
+        if (xx .lt. xvel(i1)) then
+            i1 = i1 - 1
+        else
+            if (xx .le. xvel(i2)) then
+                notfindx = .false.
+                wx = (xx - xvel(i1)) / (xvel(i2) - xvel(i1))
+            else
+                i1 = i1 + 1
+            end if
+        end if
     end do
 
     notfindy = .true.
     do while (notfindy .and. j1 .gt. 0 .and. j1 .lt. ny)
-    j2 = j1 + 1
-    if (yy .lt. yvel(j1)) then
-    j1 = j1 - 1
-    else
-    if (yy .le. yvel(j2)) then
-    notfindy = .false.
-    wy = (yy - yvel(j1)) / (yvel(j2) - yvel(j1))
-    else
-    j1 = j1 + 1
-    end if
-    end if
+        j2 = j1 + 1
+        if (yy .lt. yvel(j1)) then
+            j1 = j1 - 1
+        else
+            if (yy .le. yvel(j2)) then
+                notfindy = .false.
+                wy = (yy - yvel(j1)) / (yvel(j2) - yvel(j1))
+            else
+                j1 = j1 + 1
+            end if
+        end if
     end do
 
     notfindz = .true.
     do while (notfindz .and. k1 .gt. 0 .and. k1 .lt. nz)
-    k2 = k1 + 1
-    if (zz .lt. zvel(k1)) then
-    k1 = k1 - 1
-    else
-    if (zz .le. zvel(k2)) then
-    notfindz = .false.
-    wz = (zz - zvel(k1)) / (zvel(k2) - zvel(k1))
-    else
-    k1 = k1 + 1
-    end if
-    end if
+        k2 = k1 + 1
+        if (zz .lt. zvel(k1)) then
+            k1 = k1 - 1
+        else
+            if (zz .le. zvel(k2)) then
+                notfindz = .false.
+                wz = (zz - zvel(k1)) / (zvel(k2) - zvel(k1))
+            else
+                k1 = k1 + 1
+            end if
+        end if
     end do
 
     if ((.not.notfindx) .and. (.not.notfindy) .and. (.not.notfindz)) then
-    iloc  = 1
-    wt(1) = (1.0 - wx) * (1.0 - wy) * (1.0 - wz)
-    wt(2) = (1.0 - wx) * wy * (1.0 - wz)
-    wt(3) = wx * wy * (1.0 - wz)
-    wt(4) = wx * (1.0 - wy) * (1.0 - wz)
-    wt(5) = (1.0 - wx) * (1.0 - wy) * wz
-    wt(6) = (1.0 - wx)* wy * wz
-    wt(7) = wx * wy * wz
-    wt(8) = wx * (1.0 - wy) * wz
+        iloc  = 1
+        wt(1) = (1.0 - wx) * (1.0 - wy) * (1.0 - wz)
+        wt(2) = (1.0 - wx) * wy * (1.0 - wz)
+        wt(3) = wx * wy * (1.0 - wz)
+        wt(4) = wx * (1.0 - wy) * (1.0 - wz)
+        wt(5) = (1.0 - wx) * (1.0 - wy) * wz
+        wt(6) = (1.0 - wx)* wy * wz
+        wt(7) = wx * wy * wz
+        wt(8) = wx * (1.0 - wy) * wz
     end if
 
     return
@@ -1682,155 +1690,3 @@ subroutine inv2fwd_iso(xinv, yinv, zinv, nxinv, nyinv, nzinv, nset, nx, ny, nz_3
     end do
 end subroutine inv2fwd_iso
 
-
-subroutine regular_griddata(valx,valy,valz,nx,ny,nz,valin,x,y,z,nix,niy,niz,valout)
-    integer :: nx, ny, nz
-
-    !*** Lookup 1D tables with Cartesian coordinates
-    real, dimension(nx) :: valx
-    real, dimension(ny) :: valy
-    real, dimension(nz) :: valz
-
-    !*** Input grid of data
-    real, dimension(nx,ny,nz) :: valin
-
-    !*** Coordinate for interpolated value
-    real, dimension(nix) :: x
-    real, dimension(niy) :: y
-    real, dimension(niz) :: z
-    real, dimension(nix, niy, niz) :: valout
-!f2py   intent(in) :: valx, valy, valz, valin, x, y, z
-!f2py   intent(out) :: valout
-!f2py   intent(hide), depend(valx)   :: nx=shape(valx)
-!f2py   intent(hide), depend(valy)   :: ny=shape(valy)
-!f2py   intent(hide), depend(valz)   :: nz=shape(valz)
-!f2py   intent(hide), depend(x)   :: nix=shape(x)
-!f2py   intent(hide), depend(y)   :: niy=shape(y)
-!f2py   intent(hide), depend(z)   :: niz=shape(z)
-    do i = 1, nix
-        do j = 1, niy
-            do k = 1, niz
-                call trilin_interp(valx,valy,valz,nx,ny,nz,valin,&
-                    x(i),y(j),z(k),valout(i,j,k))
-            enddo
-        enddo
-    enddo
-end subroutine regular_griddata
-
-! Trilinear interpolation
-
-subroutine trilin_interp(valx,valy,valz,nx,ny,nz,valin,x,y,z,valout)!,indx,indy,indz)
-
-    !*** Size of grid
-    integer :: nx, ny, nz
-
-    !*** Lookup 1D tables with Cartesian coordinates
-    real, dimension(nx) :: valx
-    real, dimension(ny) :: valy
-    real, dimension(nz) :: valz
-
-    !*** Input grid of data
-    real, dimension(nx,ny,nz) :: valin
-
-    !*** Coordinate for interpolated value
-    real :: x, y, z
-
-    !*** Temporary variables
-    real :: xix1, xix2, yiy1, yiy2, ziz1, ziz2
-    real :: x2x1, x1x2, y2y1, y1y2, z2z1, z1z2
-    real :: facx1y1z1, facx1y1z2, facx1y2z1, facx1y2z2, facx2y1z1, facx2y1z2, facx2y2z1, facx2y2z2
-
-    !*** Output value to be interpolated
-    real :: valout
-    integer :: indx, indy, indz  !!! Previous guest
-    integer :: kx, ky, kz, m
-!f2py   intent(in) :: valx, valy, valz, valin, x, y, z
-!f2py   intent(out) :: valout
-!f2py   intent(hide), depend(valx)   :: nx=shape(valx)
-!f2py   intent(hide), depend(valy)   :: ny=shape(valy)
-!f2py   intent(hide), depend(valz)   :: nz=shape(valz)
-
-    !*** Lookup table
-!    call locate_hunt(valx,nx,x,indx)
-!    call locate_hunt(valy,ny,y,indy)
-!    call locate_hunt(valz,nz,z,indz)
-    call locate_bissection(valx,nx,x,indx)
-    call locate_bissection(valy,ny,y,indy)
-    call locate_bissection(valz,nz,z,indz)
-
-
-    m=2
-    kx = min(max(indx-(m-1)/2,1),nx+1-m)
-    ky = min(max(indy-(m-1)/2,1),ny+1-m)
-    kz = min(max(indz-(m-1)/2,1),nz+1-m)
-
-
-    !*** x_i - x1
-    xix1 = x - valx(kx)
-    yiy1 = y - valy(ky)
-    ziz1 = z - valz(kz)
-
-    !*** x_i - x2
-    xix2 = x - valx(kx+1)
-    yiy2 = y - valy(ky+1)
-    ziz2 = z - valz(kz+1)
-
-    !*** x1 - x2
-    x1x2 = 1./ (valx(kx) - valx(kx+1))
-    y1y2 = 1./ (valy(ky) - valy(ky+1))
-    z1z2 = 1./ (valz(kz) - valz(kz+1))
-
-    !*** x2 - x1
-    x2x1 = 1./(valx(kx+1) - valx(kx))
-    y2y1 = 1./(valy(ky+1) - valy(ky))
-    z2z1 = 1./(valz(kz+1) - valz(kz))
-
-    !*** Factors
-    facx1y1z1 = xix2*yiy2*ziz2 * x1x2*y1y2*z1z2 * valin(kx,ky,kz)
-    facx1y1z2 = xix2*yiy2*ziz1 * x1x2*y1y2*z2z1 * valin(kx,ky,kz+1)
-    facx1y2z1 = xix2*yiy1*ziz2 * x1x2*y2y1*z1z2 * valin(kx,ky+1,kz)
-    facx1y2z2 = xix2*yiy1*ziz1 * x1x2*y2y1*z2z1 * valin(kx,ky+1,kz+1)
-    facx2y1z1 = xix1*yiy2*ziz2 * x2x1*y1y2*z1z2 * valin(kx+1,ky,kz)
-    facx2y1z2 = xix1*yiy2*ziz1 * x2x1*y1y2*z2z1 * valin(kx+1,ky,kz+1)
-    facx2y2z1 = xix1*yiy1*ziz2 * x2x1*y2y1*z1z2 * valin(kx+1,ky+1,kz)
-    facx2y2z2 = xix1*yiy1*ziz1 * x2x1*y2y1*z2z1 * valin(kx+1,ky+1,kz+1)
-
-    !*** Final value
-    valout = facx1y1z1 + facx1y1z2 + facx1y2z1 + facx1y2z2 + facx2y1z1 + facx2y1z2 + facx2y2z1 + facx2y2z2
-
-end subroutine trilin_interp
-
-! Locate with bisection
-subroutine locate_bissection(valx,n,x,ind)
-
-    integer, intent(in) :: n
-    real,    intent(in) :: x
-
-    real, dimension(n), intent(in) :: valx
-
-    integer, intent(out) :: ind
-
-    integer :: jl, ju, jm
-
-    jl = 0
-    ju = n+1
-
-    do while ( (ju-jl) > 1 )
-        jm = (ju + jl) / 2
-        if ( x >= valx(jm) ) then
-            jl = jm
-        else
-            ju = jm
-        endif
-    enddo
-    if ( x == valx(1) ) then
-        ind = 1
-        else if ( x == valx(n) ) then
-            ind = n-1
-        else
-            ind = jl
-    endif
-
-end subroutine locate_bissection
-
-! end file eikon_solver_2d.f90

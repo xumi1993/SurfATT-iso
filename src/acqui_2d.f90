@@ -9,27 +9,27 @@ module acqui_2d
   implicit none
 
   type, public :: att_acqui_2d
-    real(kind=dp), dimension(:,:,:), pointer               :: svel, adj_s, &
+    real(kind=dp), dimension(:,:,:), pointer               :: svel, adj_s,&
                                                               ker_s, m11,m12,m22
+    real(kind=dp), dimension(:,:,:), allocatable           :: adj_s_local
     type(att_grid), pointer                                :: ag
     type(SrcRec), pointer                                  :: sr
     character(len=MAX_STRING_LEN)                          :: model_fname, module='ACQUI2D',&
                                                               final_fname, gr_name
-    integer                                                :: nsrc, istart, iend, itype, iter = 0
+    integer                                                :: itype, iter = 0
     real(kind=dp)                                          :: updatemax, chi0
     real(kind=dp), dimension(:), pointer                   :: misfits
-    integer, dimension(:,:), allocatable                   :: isrcs
     type(hdf5_file)                                        :: h
     contains
     procedure :: init => att_acqui_2d_init, add_pert => att_acqui_2d_add_pert, &
                  write_model => att_acqui_2d_write_model, write_iter => att_acqui_2d_write_iter, &
-                  write_obj_func => att_acqui_2d_write_obj_func
-    procedure :: prepare_fwd, init_model, prepare_inv, scatter_src_gather, prepare_fwd_linesearch
+                  write_obj_func => att_acqui_2d_write_obj_func, write_target_model => att_acqui_2d_write_target_model
+    procedure :: prepare_fwd, init_model, prepare_inv, prepare_fwd_linesearch
     procedure, private :: construct_1d_ref_model, allocate_shm_arrays
   end type
 
   type(att_acqui_2d), target                               :: acqui_ph, acqui_gr
-  integer :: win_adj_s, win_misfit, win_svel_acqui, win_xi, win_eta
+  integer :: win_adj_s, win_misfit, win_svel_acqui, win_isrcs_2d, win_ker_s
   character(len=MAX_STRING_LEN), private                   :: message
 
   contains
@@ -47,35 +47,44 @@ module acqui_2d
       this%ag => ag_gr
       this%sr => sr_gr
     endif
-    this%model_fname = trim(ap%output%output_path)//"/"//trim(modfile)
-    this%final_fname = trim(ap%output%output_path)//"/"//trim('final_model.h5')
+    this%model_fname = trim(ap%output%output_path)//"/"//'model_iter_'//trim(this%gr_name)//'.h5'
+    this%final_fname = trim(ap%output%output_path)//"/"//'final_model_'//trim(this%gr_name)//'.h5'
     
     call this%allocate_shm_arrays()
     call this%init_model()
   end subroutine att_acqui_2d_init
 
-  subroutine scatter_src_gather(this)
-    class(att_acqui_2d), intent(inout) :: this
-    integer, dimension(:,:), allocatable :: isrcs
-    integer :: i, j
+  ! subroutine scatter_src_gather(this)
+  !   class(att_acqui_2d), intent(inout) :: this
+  !   integer, dimension(:,:), allocatable :: isrcs
+  !   integer, dimension(:), allocatable :: iperiods
+  !   integer :: i, j, np
 
-    isrcs = zeros(this%sr%npath, 2)
-    this%nsrc = 0
-    do i = 1, this%sr%nperiod
-      do j = 1, this%sr%stations%nsta
-        if (any(this%sr%periods_all==this%sr%periods(i)) .and. &
-            any(this%sr%evtname==this%sr%stations%staname(j))) then          
-          this%nsrc = this%nsrc+1
-          isrcs(this%nsrc, 1) = i
-          isrcs(this%nsrc, 2) = j
-        endif
-      enddo
-    enddo
-    this%isrcs = zeros(this%nsrc, 2)
-    this%isrcs(1:this%nsrc, :) = isrcs(1:this%nsrc, :)
-    call scatter_all_i(this%nsrc,mysize,myrank,this%istart,this%iend)
-    call synchronize_all()
-  end subroutine scatter_src_gather
+  !   isrcs = zeros(this%sr%npath, 2)
+  !   iperiods = zeros(this%sr%nperiod)
+  !   this%nsrc = 0
+  !   if (local_rank == 0) then
+  !     do j = 1, this%sr%stations%nsta
+  !       if (any(this%sr%evtname==this%sr%stations%staname(j))) then  
+  !         call this%sr%get_periods_by_src(this%sr%stations%staname(j), iperiods, np)
+  !         do i = 1, np
+  !           this%nsrc = this%nsrc+1        
+  !           isrcs(this%nsrc, 1) = iperiods(i)
+  !           isrcs(this%nsrc, 2) = j
+  !         enddo
+  !       endif
+  !     enddo
+  !     write(message,'(a,i0," ",a,a,i0,a)') 'Scatter ',this%nsrc,&
+  !           trim(this%gr_name),' events to ',mysize," processors"
+  !     call write_log(message,1,this%module)
+  !   endif
+  !   call synchronize_all()
+  !   call bcast_all(this%nsrc)
+  !   call prepare_shm_array_i_2d(this%isrcs, this%nsrc, 2, win_isrcs_2d)
+  !   if (local_rank == 0) this%isrcs(1:this%nsrc, :) = isrcs(1:this%nsrc, :)
+  !   call synchronize_all()
+  !   call scatter_all_i(this%nsrc,mysize,myrank,this%istart,this%iend)
+  ! end subroutine scatter_src_gather
 
   subroutine att_acqui_2d_add_pert(this,nx,ny,pert_vel,hmarg)
     class(att_acqui_2d), intent(inout) :: this
@@ -122,6 +131,7 @@ module acqui_2d
       enddo
     endif
     call synchronize_all()
+    call sync_from_main_rank(this%svel, this%ag%nperiod, this%ag%nx, this%ag%ny)
   end subroutine att_acqui_2d_add_pert
 
   subroutine construct_1d_ref_model(this)
@@ -144,14 +154,13 @@ module acqui_2d
 
   subroutine prepare_fwd(this)
     class(att_acqui_2d), intent(inout) :: this
-    if (myrank == 0) this%ag%svel = this%svel
+    if (local_rank == 0) this%ag%svel = this%svel
     call synchronize_all()
   end subroutine prepare_fwd
 
-  subroutine prepare_fwd_linesearch(this, xi_new, eta_new)
+  subroutine prepare_fwd_linesearch(this)
     class(att_acqui_2d), intent(inout) :: this
-    real(kind=dp), dimension(:,:,:), allocatable :: update_s, update_xi, update_eta
-    real(kind=dp), dimension(:,:,:), allocatable :: xi_new, eta_new
+    real(kind=dp), dimension(:,:,:), allocatable :: update_s
     
     if (myrank == 0) then
       update_s = zeros(this%ag%nperiod, this%ag%nx, this%ag%ny)
@@ -164,7 +173,7 @@ module acqui_2d
   subroutine init_model(this)
     class(att_acqui_2d), intent(inout) :: this
     integer :: i, j
-    if (myrank == 0) then
+    if (local_rank == 0) then
       do i = 1, this%ag%nx
         do j = 1, this%ag%ny
           this%svel(:,i,j) = this%sr%meanvel
@@ -177,7 +186,12 @@ module acqui_2d
 
   subroutine prepare_inv(this)
     class(att_acqui_2d), intent(inout) :: this
-    if (myrank == 0) this%adj_s = 0.0_dp
+    this%adj_s_local = zeros(this%ag%nperiod, this%ag%nx, this%ag%ny)
+    if (local_rank == 0) then
+      this%ker_s = 0._dp
+      this%adj_s = 0._dp
+      this%sr%tt_fwd = 0._dp
+    endif
     call synchronize_all()
   end subroutine prepare_inv
 
@@ -188,16 +202,15 @@ module acqui_2d
     if (myrank == 0) then
       gr_name = trim(ap%data%gr_name(this%itype))
       if(this%iter == 0) then
-        call this%h%add('/stx_'//trim(gr_name), this%sr%stations%stx)
-        call this%h%add('/sty_'//trim(gr_name), this%sr%stations%sty)
-        call this%h%add('/periods_'//trim(gr_name), this%ag%periods)
-        call this%h%add('/x', this%ag%xgrids)
-        call this%h%add('/y', this%ag%ygrids)
+        call this%h%add('/stlo', this%sr%stations%stlo)
+        call this%h%add('/stla', this%sr%stations%stla)
+        call this%h%add('/period', this%ag%periods)
+        call this%h%add('/lon', this%ag%xgrids)
+        call this%h%add('/lat', this%ag%ygrids)
       endif
-      write(secname,'(a,i3.3)') '/vel_'//trim(gr_name)//'_',this%iter 
-      call this%h%add(secname, this%svel)
+      write(secname,'(a,i3.3)') '/vel'//trim(gr_name)//'_',this%iter 
+      call this%h%add(secname, transpose_3(this%svel))
     endif
-    call synchronize_all()
   end subroutine att_acqui_2d_write_iter
 
   subroutine att_acqui_2d_write_model(this)
@@ -208,16 +221,35 @@ module acqui_2d
     if (myrank == 0) then
       call hf%open(this%final_fname, status='new', action='write')
 
-      call hf%add('/stx_'//trim(this%gr_name), this%sr%stations%stx)
-      call hf%add('/sty_'//trim(this%gr_name), this%sr%stations%sty)
-      call hf%add('/periods_'//trim(this%gr_name), this%ag%periods)
-      call hf%add('/x', this%ag%xgrids)
-      call hf%add('/y', this%ag%ygrids)
-      call hf%add('/vel_'//trim(this%gr_name), this%svel)
+      call hf%add('/stlo', this%sr%stations%stlo)
+      call hf%add('/stla', this%sr%stations%stla)
+      call hf%add('/period', this%ag%periods)
+      call hf%add('/lon', this%ag%xgrids)
+      call hf%add('/lat', this%ag%ygrids)
+      call hf%add('/vel', transpose_3(this%svel))
       call hf%close()
     endif
     call synchronize_all()
   end subroutine att_acqui_2d_write_model
+
+  subroutine att_acqui_2d_write_target_model(this)
+    class(att_acqui_2d), intent(inout) :: this
+    character(MAX_NAME_LEN) :: gr_name, secname
+    character(len=MAX_STRING_LEN) :: target_model_fname
+    type(hdf5_file) :: hf
+
+    if (myrank == 0) then
+      target_model_fname =  trim(ap%output%output_path)//"/target_model_"//trim(this%gr_name)//".h5"
+      call hf%open(target_model_fname, status='new', action='write')
+
+      call hf%add('/period', this%ag%periods)
+      call hf%add('/lon', this%ag%xgrids)
+      call hf%add('/lat', this%ag%ygrids)
+      call hf%add('/vel', transpose_3(this%svel))
+      call hf%close()
+    endif
+    call synchronize_all()
+  end subroutine att_acqui_2d_write_target_model
 
   subroutine att_acqui_2d_write_obj_func(this)
     class(att_acqui_2d), intent(inout) :: this
@@ -235,7 +267,8 @@ module acqui_2d
     class(att_acqui_2d), intent(inout) :: this
     call prepare_shm_array_dp_1d(this%misfits, ap%inversion%niter, win_misfit)
     call prepare_shm_array_dp_3d(this%svel, this%sr%nperiod, this%ag%nx, this%ag%ny, win_svel_acqui)
-    call prepare_shm_array_dp_3d(this%ker_s, this%ag%nperiod, this%ag%nx, this%ag%ny, win_adj_s)
+    call prepare_shm_array_dp_3d(this%ker_s, this%ag%nperiod, this%ag%nx, this%ag%ny, win_ker_s)
+    call prepare_shm_array_dp_3d(this%adj_s, this%ag%nperiod, this%ag%nx, this%ag%ny, win_adj_s)
   end subroutine allocate_shm_arrays
 
 end module acqui_2d

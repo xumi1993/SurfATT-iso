@@ -45,6 +45,7 @@ module measadj
     
     this%sr => this_sr
     this%pidx = pidx
+    this%timetable = zeros(am%n_xyz(1),am%n_xyz(2))
     
     call this%sr%stations%get_sta_pos(src_name, this%srcx, this%srcy)
     call this%sr%get_evt_gather(src_name, this%sr%periods(pidx),&
@@ -60,11 +61,9 @@ module measadj
 
   subroutine run_forward(this, vel2d, m11, m22, m12, ref_t)
     class(att_measadj), intent(inout) :: this
-    real(kind=dp), dimension(am%n_xyz(1),am%n_xyz(2)),intent(in) :: vel2d, m11, m12, m22,ref_t
-    real(kind=dp), dimension(am%n_xyz(1),am%n_xyz(2)) :: vtmp
+    real(kind=dp), dimension(:,:),intent(in) :: vel2d, m11, m12, m22,ref_t
+    real(kind=dp), dimension(:,:), allocatable :: vtmp
 
-    this%timetable = zeros(am%n_xyz(1),am%n_xyz(2))
-    ! this%tekio = zeros(this%nrec)
     vtmp = 1./vel2d
     call FSM_UW_PS_lonlat_2d(am%xgrids, am%ygrids,am%n_xyz(1),am%n_xyz(2),&
                              m11, m22, -m12,&
@@ -100,7 +99,7 @@ module measadj
     call FSM_O1_JSE_lonlat_2d(am%xgrids, am%ygrids,am%n_xyz(1),am%n_xyz(2),&
                               m11, m22, -m12,&
                               this%timetable, density,this%recx, this%recy,&
-                              -1.0*this%weight, this%nrec)                   
+                              -1.0*this%weight, this%nrec)
     call mask(am%xgrids,am%ygrids,am%n_xyz(1),am%n_xyz(2),density,this%srcx,this%srcy)
   end subroutine run_adjoint_density
 

@@ -1,10 +1,12 @@
 module surfker
 
-  use constants
+  use shared_par
   use RayleighWaveKernel
   use utils
+  ! use setup_att_log
   implicit none
   integer, parameter :: iflsph=1, mode=1
+    character(len=MAX_STRING_LEN) :: msg, thismodule='SURFKER'
   ! integer, parameter :: dp = 8
 contains
 
@@ -53,6 +55,8 @@ contains
       do j = iy_start, iy_end
         ii = i-ix_start+1
         jj = j-iy_start+1
+        ! write(msg, '(a,i0,a,i0,a,i0,a)') 'Computing kernel: rank ',myrank,', grid point (',i,',',j,')'
+        ! call write_log(msg, 0, thismodule)
         call depthkernel1d(vs3d(i,j,:),nz,iwave,igr,kmaxRc,tRc,depz,&
                          sen_vsRc(1:kmaxRc,ii,jj,1:nz),&
                          sen_vpRc(1:kmaxRc,ii,jj,1:nz),&
@@ -175,6 +179,8 @@ contains
       do j = iy_start, iy_end
         ii = i-ix_start+1
         jj = j-iy_start+1
+        ! write(msg, '(a,i0,a,i0,a,i0,a)') 'Computing dispersion: rank ',myrank,', grid point (',i,',',j,')'
+        ! call write_log(msg, 0, thismodule)
         call fwdsurf1d(vel(i,j,:),iwave,igr,tRc,depz,tmpv)
         svel(1:kmaxRc, ii,jj) = tmpv(1:kmaxRc)
       enddo

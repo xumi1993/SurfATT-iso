@@ -11,42 +11,39 @@
 !
 !=====================================================================
 
-program surfatt_tomo
+program surfatt_cb_fwd
   use my_mpi
   use para, ap => att_para_global
   use src_rec, sr_gr => src_rec_global_gr, sr_ph => src_rec_global_ph
   use model, am => att_model_global
-  use grid, ag_gr => att_grid_global_gr, ag_ph => att_grid_global_ph
   use measadj
   use tomo
   use setup_att_log, only: setuplog
-  use argparse, only: argparse_tomo
+  use argparse, only: argparse_cb_fwd
+  ! use stdlib_io_npy, only: save_npy
 
   implicit none
   
   type(att_tomo) :: att
   character(len=MAX_STRING_LEN) :: fname
-  logical :: isfwd
-  real(kind=dp) :: t0, t1
+  integer, dimension(3) :: ncb
+  real(kind=dp) :: pert, hmarg, anom_size, max_noise
 
   ! initialize MPI
   call init_mpi()
-  call world_rank(myrank)
-  call world_size(mysize)
 
-  call cpu_time(t0)
   ! read command line arguments
-  call argparse_tomo(fname, isfwd)
+  call argparse_cb_fwd(fname, ncb, pert, hmarg, anom_size, max_noise)
 
   ! read parameter file
   call ap%read(fname)
 
   ! intialize logger
-  call setuplog()
+  call setuplog(ap%output%log_level)
 
   ! read dispersion data
-  if (ap%data%vel_type(1)) call sr_ph%read(0)
-  if (ap%data%vel_type(2)) call sr_gr%read(1)
+  if (ap%data%vel_type(1)) call sr_ph%read(type=0)
+  if (ap%data%vel_type(2)) call sr_gr%read(type=1)
   call merge_sta()
 
   ! initialize model type
@@ -54,6 +51,10 @@ program surfatt_tomo
 
   ! construct initial model
   call am%get_init_model()
+
+  ! add perturbations
+  call am%add_pert(ncb(1),ncb(2),ncb(3), pert_vel=pert,&
+                   hmarg=hmarg, anom_size=anom_size)
 
   ! initialize grid
   if (ap%data%vel_type(1)) then
@@ -65,22 +66,12 @@ program surfatt_tomo
     call ag_gr%get_topo()
   endif
 
-  ! initial inverison
-  call att%init(is_fwd=isfwd)
+  call att%init(is_fwd=.true.)
+  call am%write('target_model')
 
-  if (isfwd) then
-    ! do forward
-    call att%do_forward()
-  else
-    ! do inversion
-    call att%do_inversion()
-  endif
-
-  ! calculate CPU time 
-  call cpu_time(t1)
-  write(att%message, '(a,f0.2,a)') 'Elapsed CPU time: ', t1-t0, ' s'
-  call write_log(att%message,1,att%module)
+  ! do forward
+  call att%do_forward(max_noise=max_noise)
 
   ! MPI finish
   call finalize_mpi()
-end program surfatt_tomo
+end program surfatt_cb_fwd

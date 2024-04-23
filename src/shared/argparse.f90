@@ -61,17 +61,18 @@ contains
     endif
   end subroutine argparse_tomo
 
-  subroutine argparse_cb_fwd(fname, ncb, pert_vel, hmarg, anom_size)
+  subroutine argparse_cb_fwd(fname, ncb, pert_vel, hmarg, anom_size, max_noise)
     character(len=MAX_STRING_LEN),dimension(:), allocatable :: args
     character(len=MAX_STRING_LEN) :: arg, value
     character(len=MAX_STRING_LEN),intent(out) :: fname
     integer, dimension(3), intent(out) :: ncb
-    real(kind=dp), intent(out) :: pert_vel, hmarg, anom_size
-    integer :: i,nargs,m,ier, nopt=5
+    real(kind=dp), intent(out) :: pert_vel, hmarg, anom_size, max_noise
+    integer :: i,nargs,m,ier, nopt=6
 
     pert_vel = 0.08
     hmarg = 0.
     anom_size = 0.
+    max_noise = 0.
     nargs = command_argument_count()
     allocate(args(nargs))
     do i = 1, nargs
@@ -79,7 +80,7 @@ contains
     enddo
     if (myrank==0 .and. (nargs==0 .or. any(args == '-h'))) then
       write(*,*)'Usage: surfatt_cb_fwd -i para_file -n nx/ny/nz [-h] '// &
-                '[-m margin_km] [-p pert] [-s anom_size_km]'
+                '[-m margin_degree] [-p pert] [-s anom_size_km]'
       write(*,*)''
       write(*,*)'Create checkerboard and forward simulate travel time for surface wave'
       write(*,*)''
@@ -89,7 +90,8 @@ contains
       write(*,*)''
       write(*,*)'optional arguments:'
       write(*,*)' -h                  Print help message'
-      write(*,*)' -m margin_km        Margin area in km between anomaly as boundary, defaults to 0km'
+      write(*,*)' -e tt_noise         Add random noise to travel time data, defaults to 0'
+      write(*,*)' -m margin_degree    Margin area in degree between anomaly as boundary, defaults to 0'
       write(*,*)' -p pert_vel         Magnitude of velocity perturbations, defaults to 0.08'
       write(*,*)' -s anom_size_km     size of anomalies at the top in km, default to uniform anomaly size in Z direction'
     endif
@@ -115,7 +117,11 @@ contains
       elseif(arg(1:2) == '-s') then
         m = m+1
         read(args(i+1),*,iostat=ier) anom_size
-        if(ier/=0) stop 'Cannot parse argument -s'          
+        if(ier/=0) stop 'Cannot parse argument -s'
+      elseif(arg(1:2) == '-e') then
+        m = m+1
+        read(args(i+1),*,iostat=ier) max_noise
+        if(ier/=0) stop 'Cannot parse argument -e'         
       endif
     enddo
     if (m<1) then
@@ -335,10 +341,15 @@ contains
 
     ! Read numbers from the string
     read(input(1 : slash - 1), *, IOSTAT=ierr) nums(1)
-    if(ierr/=0) stop 'Cannot parse argument '//trim(input)
+    if(ierr/=0) then
+      write(*,*)'Cannot parse argument '//trim(input)
+      stop
+    endif
     read(input(slash + 1 :), *, iostat=ierr) nums(2)
-    if(ierr/=0) stop 'Cannot parse argument '//trim(input)
-    
+    if(ierr/=0) then
+      write(*,*) 'Cannot parse argument '//trim(input)
+      stop 
+    endif
   end subroutine parse_2string_dp
 
   subroutine parse_2string_i(input, nums)
@@ -351,9 +362,15 @@ contains
 
     ! Read numbers from the string
     read(input(1 : slash - 1), *, IOSTAT=ierr) nums(1)
-    if(ierr/=0) stop 'Cannot parse argument '//trim(input)
+    if(ierr/=0) then
+      write(*,*)'Cannot parse argument '//trim(input)
+      stop
+    endif
     read(input(slash + 1 :), *, iostat=ierr) nums(2)
-    if(ierr/=0) stop 'Cannot parse argument '//trim(input)
+    if(ierr/=0) then
+      write(*,*) 'Cannot parse argument '//trim(input)
+      stop
+    endif
     
   end subroutine parse_2string_i
 end module argparse
