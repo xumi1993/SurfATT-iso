@@ -151,12 +151,12 @@ contains
     call synchronize_all()
   end subroutine initialize_inv
 
-  subroutine post_proc_eikokernel(this, pidx, adjtable, timetable)
+  subroutine post_proc_eikokernel(this, pidx, adjtable)
     class(att_tomo_2d), intent(inout) :: this
     integer, intent(inout) :: pidx
     real(kind=dp), dimension(:,:),allocatable :: Tx, Ty
     real(kind=dp), dimension(:,:,:), allocatable :: adj_s_local
-    real(kind=dp),  dimension(:,:), allocatable, intent(in) :: adjtable, timetable
+    real(kind=dp),  dimension(:,:), allocatable, intent(in) :: adjtable
     ! real(kind=dp), dimension(acqui%ag%nx, acqui%ag%ny) :: vtmp
     integer :: i, j, k
 
@@ -195,7 +195,7 @@ contains
           call ma%run_adjoint(acqui%ag%m11(acqui%sr%isrcs(i, 1),:,:),acqui%ag%m22(acqui%sr%isrcs(i,1),:,:),&
                               acqui%ag%m12(acqui%sr%isrcs(i,1),:,:),adj)
           ! post proc of eikonal kernel
-          call this%post_proc_eikokernel(acqui%sr%isrcs(i,1), adj, ma%timetable)
+          call this%post_proc_eikokernel(acqui%sr%isrcs(i,1), adj)
         endif
         ! sum chi
         chi_local = chi_local + ma%chi

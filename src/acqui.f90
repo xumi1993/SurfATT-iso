@@ -143,7 +143,7 @@ contains
           call ma%run_adjoint_density(this%ag%m11(pidx,:,:), this%ag%m22(pidx,:,:),&
                                       this%ag%m12(pidx,:,:),kden)
           ! post proc of eikonal kernel
-          call this%post_proc_eikokernel(pidx, adj, ma%timetable)
+          call this%post_proc_eikokernel(pidx, adj, kden)
         endif
         ! distory measadj
         call ma%distory()
@@ -293,7 +293,7 @@ contains
     integer :: i, j, k
 
     this%adj_s_local(pidx, :,:) = this%adj_s_local(pidx, :,:)+adjtable / this%ag%svel(pidx, :,:)**3
-    this%adj_density_local(pidx, :,:) = this%adj_density_local(pidx, :,:)+kden
+    this%adj_density_local(pidx, :,:) = this%adj_density_local(pidx, :,:)+kden / this%ag%svel(pidx, :,:)**3
   end subroutine post_proc_eikokernel
 
   subroutine allocate_shm_arrays(this)

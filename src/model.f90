@@ -121,7 +121,7 @@ module model
     call sync_from_main_rank(this%vp3d, this%n_xyz(1), this%n_xyz(2), this%n_xyz(3))
     call sync_from_main_rank(this%rho3d, this%n_xyz(1), this%n_xyz(2), this%n_xyz(3))
     call sync_from_main_rank(this%vs1d, this%n_xyz(3))
-      end subroutine get_init_model
+  end subroutine get_init_model
 
   subroutine get_inv_grids(this)
     class(att_model), intent(inout) :: this
