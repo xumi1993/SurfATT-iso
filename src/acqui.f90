@@ -150,7 +150,10 @@ contains
       enddo
     endif
     call synchronize_all()
-    if (istotable) call sum_all(local_tt, this%sr%tt_fwd, this%sr%npath)
+    if (istotable) then
+      call sum_all(local_tt, this%sr%tt_fwd, this%sr%npath)
+      call sync_from_main_rank(this%sr%tt_fwd, this%sr%npath)
+    endif
     ! reduce chi
     call sum_all(chi_local, chi_global)
     call bcast_all(chi_global)

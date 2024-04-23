@@ -220,7 +220,7 @@ contains
       this%stations%stla = templa(1:count)
       this%stations%stlo = templo(1:count)
     endif
-    call sync_from_main_rank_ch(this%stations%staname, this%stations%nsta, MAX_NAME_LEN)
+    call sync_from_main_rank(this%stations%staname, this%stations%nsta, MAX_NAME_LEN)
     call sync_from_main_rank(this%stations%stla, this%stations%nsta)
     call sync_from_main_rank(this%stations%stlo, this%stations%nsta)
     call synchronize_all()
@@ -341,10 +341,10 @@ contains
     integer, dimension(:), allocatable :: iperiods
     integer :: i, j, np
 
-    iperiods = zeros(this%nperiod)
-    isrcs = zeros(this%npath, 2)
-    this%nsrc = 0
-    if (local_rank == 0) then
+    if (myrank == 0) then
+      iperiods = zeros(this%nperiod)
+      this%nsrc = 0
+      isrcs = zeros(this%npath, 2)
       do j = 1, this%stations%nsta
         if (any(this%evtname==this%stations%staname(j))) then  
           call this%get_periods_by_src(this%stations%staname(j), iperiods, np)
@@ -362,8 +362,9 @@ contains
     call synchronize_all()
     call bcast_all(this%nsrc)
     call prepare_shm_array_i_2d(this%isrcs, this%nsrc, 2, win_isrcs_sr)
-    if (local_rank == 0) this%isrcs(1:this%nsrc, :) = isrcs(1:this%nsrc, :)
+    if (myrank == 0) this%isrcs(1:this%nsrc, :) = isrcs(1:this%nsrc, :)
     call synchronize_all()
+    call sync_from_main_rank(this%isrcs, this%nsrc, 2)
     call scatter_all_i(this%nsrc,mysize,myrank,this%istart,this%iend)
   end subroutine scatter_src_gather
 
