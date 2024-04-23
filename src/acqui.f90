@@ -293,7 +293,7 @@ contains
     integer :: i, j, k
 
     this%adj_s_local(pidx, :,:) = this%adj_s_local(pidx, :,:)+adjtable / this%ag%svel(pidx, :,:)**3
-    this%adj_density_local(pidx, :,:) = this%adj_density_local(pidx, :,:)+kden
+    this%adj_density_local(pidx, :,:) = this%adj_density_local(pidx, :,:)+kden / this%ag%svel(pidx, :,:)**3
   end subroutine post_proc_eikokernel
 
   subroutine allocate_shm_arrays(this)
