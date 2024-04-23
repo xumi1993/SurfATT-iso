@@ -16,16 +16,15 @@ module acqui_2d
     type(SrcRec), pointer                                  :: sr
     character(len=MAX_STRING_LEN)                          :: model_fname, module='ACQUI2D',&
                                                               final_fname, gr_name
-    integer                                                :: nsrc, istart, iend, itype, iter = 0
+    integer                                                :: itype, iter = 0
     real(kind=dp)                                          :: updatemax, chi0
     real(kind=dp), dimension(:), pointer                   :: misfits
-    integer, dimension(:,:), pointer                       :: isrcs
     type(hdf5_file)                                        :: h
     contains
     procedure :: init => att_acqui_2d_init, add_pert => att_acqui_2d_add_pert, &
                  write_model => att_acqui_2d_write_model, write_iter => att_acqui_2d_write_iter, &
                   write_obj_func => att_acqui_2d_write_obj_func, write_target_model => att_acqui_2d_write_target_model
-    procedure :: prepare_fwd, init_model, prepare_inv, scatter_src_gather, prepare_fwd_linesearch
+    procedure :: prepare_fwd, init_model, prepare_inv, prepare_fwd_linesearch
     procedure, private :: construct_1d_ref_model, allocate_shm_arrays
   end type
 
@@ -55,37 +54,37 @@ module acqui_2d
     call this%init_model()
   end subroutine att_acqui_2d_init
 
-  subroutine scatter_src_gather(this)
-    class(att_acqui_2d), intent(inout) :: this
-    integer, dimension(:,:), allocatable :: isrcs
-    integer, dimension(:), allocatable :: iperiods
-    integer :: i, j, np
+  ! subroutine scatter_src_gather(this)
+  !   class(att_acqui_2d), intent(inout) :: this
+  !   integer, dimension(:,:), allocatable :: isrcs
+  !   integer, dimension(:), allocatable :: iperiods
+  !   integer :: i, j, np
 
-    isrcs = zeros(this%sr%npath, 2)
-    iperiods = zeros(this%sr%nperiod)
-    this%nsrc = 0
-    if (local_rank == 0) then
-      do j = 1, this%sr%stations%nsta
-        if (any(this%sr%evtname==this%sr%stations%staname(j))) then  
-          call this%sr%get_periods_by_src(this%sr%stations%staname(j), iperiods, np)
-          do i = 1, np
-            this%nsrc = this%nsrc+1        
-            isrcs(this%nsrc, 1) = iperiods(i)
-            isrcs(this%nsrc, 2) = j
-          enddo
-        endif
-      enddo
-      write(message,'(a,i0," ",a,a,i0,a)') 'Scatter ',this%nsrc,&
-            trim(this%gr_name),' events to ',mysize," processors"
-      call write_log(message,1,this%module)
-    endif
-    call synchronize_all()
-    call bcast_all(this%nsrc)
-    call prepare_shm_array_i_2d(this%isrcs, this%nsrc, 2, win_isrcs_2d)
-    if (local_rank == 0) this%isrcs(1:this%nsrc, :) = isrcs(1:this%nsrc, :)
-    call synchronize_all()
-    call scatter_all_i(this%nsrc,mysize,myrank,this%istart,this%iend)
-  end subroutine scatter_src_gather
+  !   isrcs = zeros(this%sr%npath, 2)
+  !   iperiods = zeros(this%sr%nperiod)
+  !   this%nsrc = 0
+  !   if (local_rank == 0) then
+  !     do j = 1, this%sr%stations%nsta
+  !       if (any(this%sr%evtname==this%sr%stations%staname(j))) then  
+  !         call this%sr%get_periods_by_src(this%sr%stations%staname(j), iperiods, np)
+  !         do i = 1, np
+  !           this%nsrc = this%nsrc+1        
+  !           isrcs(this%nsrc, 1) = iperiods(i)
+  !           isrcs(this%nsrc, 2) = j
+  !         enddo
+  !       endif
+  !     enddo
+  !     write(message,'(a,i0," ",a,a,i0,a)') 'Scatter ',this%nsrc,&
+  !           trim(this%gr_name),' events to ',mysize," processors"
+  !     call write_log(message,1,this%module)
+  !   endif
+  !   call synchronize_all()
+  !   call bcast_all(this%nsrc)
+  !   call prepare_shm_array_i_2d(this%isrcs, this%nsrc, 2, win_isrcs_2d)
+  !   if (local_rank == 0) this%isrcs(1:this%nsrc, :) = isrcs(1:this%nsrc, :)
+  !   call synchronize_all()
+  !   call scatter_all_i(this%nsrc,mysize,myrank,this%istart,this%iend)
+  ! end subroutine scatter_src_gather
 
   subroutine att_acqui_2d_add_pert(this,nx,ny,pert_vel,hmarg)
     class(att_acqui_2d), intent(inout) :: this

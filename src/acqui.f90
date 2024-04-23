@@ -23,7 +23,7 @@ module acqui
   implicit none
 
   type, public :: att_acqui
-    integer                                                :: itype,nsrc,istart,iend,iter
+    integer                                                :: itype,iter
     type(att_grid), pointer                                :: ag
     type(SrcRec), pointer                                  :: sr
     logical                                                :: is_fwd
@@ -33,10 +33,9 @@ module acqui
     real(kind=dp), dimension(:,:,:), allocatable           :: adj_s_local, adj_density_local
     real(kind=dp), dimension(:,:,:,:), pointer             :: sen_vsRc, sen_vpRc, sen_rhoRc
     real(kind=dp), dimension(:,:,:), pointer               :: ker_beta, ker_density
-    integer, dimension(:,:), pointer                       :: isrcs
     real(kind=dp)                                          :: chi0
     contains
-    procedure :: init => att_acqui_init, scatter => att_scatter_src_gather, post_proc => post_processing_for_kernel
+    procedure :: init => att_acqui_init, post_proc => post_processing_for_kernel
     procedure :: allocate_shm_arrays, prepare_inv, regularize_ker_density, post_proc_eikokernel,&
                  forward_simulate, depthkernel, combine_kernels
   end type att_acqui
@@ -67,41 +66,9 @@ contains
       this%ag => ag_gr
       this%sr => sr_gr
     endif
-    call this%scatter()
+    call this%sr%scatter_src_gather()
     call this%allocate_shm_arrays()
   end subroutine att_acqui_init
-
-  subroutine att_scatter_src_gather(this)
-    class(att_acqui), intent(inout) :: this
-    integer, dimension(:,:), allocatable :: isrcs
-    integer, dimension(:), allocatable :: iperiods
-    integer :: i, j, np
-
-    iperiods = zeros(this%sr%nperiod)
-    isrcs = zeros(this%sr%npath, 2)
-    this%nsrc = 0
-    if (local_rank == 0) then
-      do j = 1, this%sr%stations%nsta
-        if (any(this%sr%evtname==this%sr%stations%staname(j))) then  
-          call this%sr%get_periods_by_src(this%sr%stations%staname(j), iperiods, np)
-          do i = 1, np
-            this%nsrc = this%nsrc+1        
-            isrcs(this%nsrc, 1) = iperiods(i)
-            isrcs(this%nsrc, 2) = j
-          enddo
-        endif
-      enddo
-      write(this%message,'(a,i0," ",a,a,i0,a)') 'Scatter ',this%nsrc,&
-            trim(this%gr_name),' events to ',mysize," processors"
-      call write_log(this%message,1,this%module)
-    endif
-    call synchronize_all()
-    call bcast_all(this%nsrc)
-    call prepare_shm_array_i_2d(this%isrcs, this%nsrc, 2, win_isrcs)
-    if (local_rank == 0) this%isrcs(1:this%nsrc, :) = isrcs(1:this%nsrc, :)
-    call synchronize_all()
-    call scatter_all_i(this%nsrc,mysize,myrank,this%istart,this%iend)
-  end subroutine att_scatter_src_gather
 
   subroutine prepare_inv(this)
     class(att_acqui), intent(inout) :: this
@@ -151,12 +118,12 @@ contains
     call this%ag%fwdsurf(am%vs3d_opt)
     if (verbose_local) call write_log('This is measuring misfit and computing adjoint field for '//&
                             trim(this%gr_name)//'...',1,this%module)
-    if ((this%iend-this%istart)>=0) then
-      do i = this%istart, this%iend
-        pidx = this%isrcs(i,1); stidx = this%isrcs(i,2)
+    if ((this%sr%iend-this%sr%istart)>=0) then
+      do i = this%sr%istart, this%sr%iend
+        pidx = this%sr%isrcs(i,1); stidx = this%sr%isrcs(i,2)
         write(this%message, '("rank: ",i0,a,F0.4,a,a," (",i0,"/",i0,")")') myrank,' period: ',&
               this%sr%periods(pidx),' src_name: ',&
-              trim(this%sr%stations%staname(stidx)), i-this%istart+1, this%iend-this%istart+1
+              trim(this%sr%stations%staname(stidx)), i-this%sr%istart+1, this%sr%iend-this%sr%istart+1
         if (verbose_local) call write_log(this%message,0,this%module)
         ! get receivers for this source
         call ma%get_recs(this%sr,pidx,this%sr%stations%staname(stidx))

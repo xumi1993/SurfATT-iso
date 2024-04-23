@@ -34,16 +34,17 @@ module src_rec
                                                              evla, evlo,& 
                                                              periods_all, weight,&
                                                              tt, vel, dist
-    integer                                                :: npath, nfield
+    integer                                                :: npath, nfield, nsrc, istart, iend
     character(len=MAX_NAME_LEN), dimension(:), pointer     :: evtname, staname, header
-    real(kind=dp), dimension(:), pointer                   :: periods, meanvel
-    real(kind=dp), dimension(:), pointer                   :: tt_fwd
+    real(kind=dp), dimension(:), pointer                   :: periods, meanvel, tt_fwd
+    integer, dimension(:,:), pointer                       :: isrcs
     integer                                                :: nperiod
     type(stations)                                         :: stations
     character(len=MAX_STRING_LEN)                          :: module = 'SRCREC', message
     contains
     procedure :: read => read_src_rec_file, to_csv             
-    procedure :: get_sta, get_periods, get_mean_vel, get_evt_gather,get_periods_by_src,add_random_noise                                      
+    procedure :: get_sta, get_periods, get_mean_vel, get_evt_gather,get_periods_by_src,add_random_noise,&
+                 scatter_src_gather                                 
   end type SrcRec
 
   type(srcrec), target, public                             :: src_rec_global_ph,src_rec_global_gr
@@ -52,7 +53,7 @@ module src_rec
              win_evla, win_evlo, win_periods_all, win_tt, &
              win_staname, win_evtname, win_periods_sr, win_meanvel,&
              win_sta_name, win_sta_la, win_sta_lo, win_glob_sta,&
-             win_glob_stla, win_glob_stlo
+             win_glob_stla, win_glob_stlo, win_isrcs_sr
 
 contains
   subroutine read_src_rec_file(this, type)
@@ -333,6 +334,38 @@ contains
     stay = this%stla(i)
     stax = this%stlo(i)
   end subroutine get_sta_pos
+
+  subroutine scatter_src_gather(this)
+    class(srcrec), intent(inout) :: this
+    integer, dimension(:,:), allocatable :: isrcs
+    integer, dimension(:), allocatable :: iperiods
+    integer :: i, j, np
+
+    iperiods = zeros(this%nperiod)
+    isrcs = zeros(this%npath, 2)
+    this%nsrc = 0
+    if (local_rank == 0) then
+      do j = 1, this%stations%nsta
+        if (any(this%evtname==this%stations%staname(j))) then  
+          call this%get_periods_by_src(this%stations%staname(j), iperiods, np)
+          do i = 1, np
+            this%nsrc = this%nsrc+1        
+            isrcs(this%nsrc, 1) = iperiods(i)
+            isrcs(this%nsrc, 2) = j
+          enddo
+        endif
+      enddo
+      write(this%message,'(a,i0," ",a,i0,a)') 'Scatter ',this%nsrc,&
+            ' events to ',mysize," processors"
+      call write_log(this%message,1,this%module)
+    endif
+    call synchronize_all()
+    call bcast_all(this%nsrc)
+    call prepare_shm_array_i_2d(this%isrcs, this%nsrc, 2, win_isrcs_sr)
+    if (local_rank == 0) this%isrcs(1:this%nsrc, :) = isrcs(1:this%nsrc, :)
+    call synchronize_all()
+    call scatter_all_i(this%nsrc,mysize,myrank,this%istart,this%iend)
+  end subroutine scatter_src_gather
 
   subroutine add_random_noise(this, max_noise)
     class(SrcRec), intent(inout) :: this

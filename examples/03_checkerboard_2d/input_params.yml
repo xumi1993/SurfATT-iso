@@ -40,3 +40,4 @@ inversion:
   step_length: 0.02 # starting step length
   maxshrink: 0.6 # max step length decent
   kdensity_coe: 0 # Kdensity_coe is used to rescale the final kernel:  kernel -> kernel / pow(density of kernel, Kdensity_coe).
+  sigma_2d: 0.2

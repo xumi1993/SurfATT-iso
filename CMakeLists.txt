@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.8)
 
 # set the project name
 set(CMAKE_PROJECT_NAME "SurfATT")
-project(${CMAKE_PROJECT_NAME} VERSION 1.4.0 LANGUAGES Fortran CXX)
+project(${CMAKE_PROJECT_NAME} VERSION 1.4.1 LANGUAGES Fortran CXX)
 
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 set(CMAKE_Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/modules)

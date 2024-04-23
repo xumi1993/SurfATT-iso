@@ -45,7 +45,7 @@ contains
       if (.not. ap%data%vel_type(itype)) cycle
       call select_type()
       call acqui%init(itype)
-      call acqui%scatter_src_gather()
+      call acqui%sr%scatter_src_gather()
     enddo
     if (myrank == 0) then
       call EXECUTE_COMMAND_LINE('mkdir -p '//trim(ap%output%output_path),&
@@ -174,28 +174,28 @@ contains
     logical :: istotable, isadj
 
     local_tt = zeros(acqui%sr%npath)
-    if ((acqui%iend-acqui%istart)>=0) then
+    if ((acqui%sr%iend-acqui%sr%istart)>=0) then
       chi_local = 0.0_dp
-      do i = acqui%istart, acqui%iend
+      do i = acqui%sr%istart, acqui%sr%iend
         ! write log
         write(this%message, '(a,F0.4,a,a)') 'period: ',&
-              acqui%sr%periods(acqui%isrcs(i,1)),' src_name: ',&
-              acqui%sr%stations%staname(acqui%isrcs(i, 2))
+              acqui%sr%periods(acqui%sr%isrcs(i,1)),' src_name: ',&
+              acqui%sr%stations%staname(acqui%sr%isrcs(i, 2))
         call write_log(this%message,0,this%module)
         ! get receiver gather
-        call ma%get_recs(acqui%sr,acqui%isrcs(i,1),acqui%sr%stations%staname(acqui%isrcs(i, 2)))
+        call ma%get_recs(acqui%sr,acqui%sr%isrcs(i,1),acqui%sr%stations%staname(acqui%sr%isrcs(i, 2)))
         ! forward
-        call ma%run_forward(acqui%ag%svel(acqui%isrcs(i,1),:,:), acqui%ag%m11(acqui%isrcs(i, 1),:,:),&
-                            acqui%ag%m22(acqui%isrcs(i,1),:,:), acqui%ag%m12(acqui%isrcs(i,1),:,:),&
-                            acqui%ag%ref_t(acqui%isrcs(i,1),:,:))
+        call ma%run_forward(acqui%ag%svel(acqui%sr%isrcs(i,1),:,:), acqui%ag%m11(acqui%sr%isrcs(i, 1),:,:),&
+                            acqui%ag%m22(acqui%sr%isrcs(i,1),:,:), acqui%ag%m12(acqui%sr%isrcs(i,1),:,:),&
+                            acqui%ag%ref_t(acqui%sr%isrcs(i,1),:,:))
         ! to time table
         if (istotable) call ma%to_table(local_tt)
         ! measure adjoint
         if (isadj) then
-          call ma%run_adjoint(acqui%ag%m11(acqui%isrcs(i, 1),:,:),acqui%ag%m22(acqui%isrcs(i,1),:,:),&
-                              acqui%ag%m12(acqui%isrcs(i,1),:,:),adj)
+          call ma%run_adjoint(acqui%ag%m11(acqui%sr%isrcs(i, 1),:,:),acqui%ag%m22(acqui%sr%isrcs(i,1),:,:),&
+                              acqui%ag%m12(acqui%sr%isrcs(i,1),:,:),adj)
           ! post proc of eikonal kernel
-          call this%post_proc_eikokernel(acqui%isrcs(i,1), adj, ma%timetable)
+          call this%post_proc_eikokernel(acqui%sr%isrcs(i,1), adj, ma%timetable)
         endif
         ! sum chi
         chi_local = chi_local + ma%chi
@@ -247,7 +247,7 @@ contains
   
     call write_log('Optimizing using steepest descent...',1,this%module)
     if (acqui%misfits(acqui%iter) > acqui%misfits(acqui%iter-1)) then
-      write(this%message, '(a,f6.4,a,f6.4)') 'Misfit increased from ',&
+      write(this%message, '(a,f0.8,a,f0.8)') 'Misfit increased from ',&
             acqui%misfits(acqui%iter-1),' to ',acqui%misfits(acqui%iter)
       call write_log(this%message,1,this%module)
       acqui%updatemax = acqui%updatemax*ap%inversion%maxshrink

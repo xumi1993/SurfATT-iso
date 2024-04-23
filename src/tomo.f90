@@ -30,7 +30,7 @@ module tomo
 
   type, public ::  att_tomo
     integer, dimension(:,:), allocatable                   :: isrcs
-    integer                                                :: nsrc, istart, iend,iter
+    integer                                                :: iter
     character(len=MAX_STRING_LEN)                          :: message,module='TOMO'
     real(kind=dp), dimension(:), pointer                   :: misfits
     logical                                                :: is_fwd
