@@ -185,14 +185,19 @@ contains
   end subroutine collect_sen
 
   subroutine close_factors(num, f1, f2)
-    integer :: num, f1, f2, i
+    integer :: num, f1, f2, i, dif
 
-    f1 = 1; f2 = num
+    f1 = 1; f2 = num; dif = f2-f1
     do i = 2, int(sqrt(real(num)))
       if (mod(num, i) == 0) then
         f1 = i
         f2 = num / i
-        return
+        if (f2 - f1 < dif) then
+          dif = f2 - f1
+          cycle
+        else
+          return
+        endif
       end if
     end do
   end subroutine close_factors
