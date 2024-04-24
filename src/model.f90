@@ -86,22 +86,21 @@ module model
     call prepare_shm_array_dp_3d(this%vp3d, this%n_xyz(1), this%n_xyz(2), this%n_xyz(3), win_vp3d)
     call prepare_shm_array_dp_3d(this%rho3d, this%n_xyz(1), this%n_xyz(2), this%n_xyz(3), win_rho3d)
     call prepare_shm_array_dp_1d(this%vs1d, this%n_xyz(3), win_vs1d)
-    ! this%vs1d = linspace(ap%inversion%vel_range(1), ap%inversion%vel_range(2), this%n_xyz(3))
     if (myrank == 0) then
       this%vs1d = linspace(ap%inversion%vel_range(1), ap%inversion%vel_range(2), this%n_xyz(3))
       if (ap%inversion%init_model_type == 1) then
         call this%inv1d(this%vs1d, niter, misfits)
       elseif (ap%inversion%init_model_type == 2) then
         call h5read(ap%inversion%init_model_path, '/vs', vstmp)
-        if (any(shape(vstmp) /= this%n_xyz)) then
+        if (any(shape(transpose_3(vstmp)) /= this%n_xyz)) then
           write(*,*) 'Shape of '//trim(ap%inversion%init_model_path)//' dose not match with' //&
                      ' shape of computational domain.'
           stop
         endif
         do i = 1, this%n_xyz(3)
-          this%vs1d(i) = sum(vstmp(:,:,i))/(this%n_xyz(1)*this%n_xyz(2))
+          this%vs1d(i) = sum(vstmp(i,:,:))/(this%n_xyz(1)*this%n_xyz(2))
         enddo
-        this%vs3d = vstmp
+        this%vs3d = transpose_3(vstmp)
       elseif(ap%inversion%init_model_type /= 0) then
         call write_log('Unknown initial model type, only valid in [0,1,2]',3,this%module)
         stop
