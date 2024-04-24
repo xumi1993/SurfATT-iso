@@ -203,7 +203,7 @@ contains
       enddo ! i = acqui%istart, acqui%iend
     endif ! if ((acqui%iend-acqui%istart)>=0)
     call synchronize_all()
-    call sum_all(acqui%adj_s_local, acqui%adj_s, acqui%sr%nperiod,acqui%ag%nx,acqui%ag%ny)
+    if (isadj) call sum_all(acqui%adj_s_local, acqui%adj_s, acqui%sr%nperiod,acqui%ag%nx,acqui%ag%ny)
     call sum_all(chi_local, chi)
     call bcast_all(chi)
     if (istotable) call sum_all(local_tt, acqui%sr%tt_fwd,acqui%sr%npath)
