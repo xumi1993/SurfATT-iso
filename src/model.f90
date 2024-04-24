@@ -93,8 +93,8 @@ module model
       elseif (ap%inversion%init_model_type == 2) then
         call h5read(ap%inversion%init_model_path, '/vs', vstmp)
         if (any(shape(transpose_3(vstmp)) /= this%n_xyz)) then
-          write(*,*) 'Shape of '//trim(ap%inversion%init_model_path)//' dose not match with' //&
-                     ' shape of computational domain.'
+          call write_log('Shape of '//trim(ap%inversion%init_model_path)//' dose not match with'//&
+                         ' shape of computational domain.',3,this%module)
           stop
         endif
         do i = 1, this%n_xyz(3)
