@@ -173,6 +173,9 @@ module para
         if (associated(io_err)) call exit_mpi(myrank, trim(io_err%message))
         this%inversion%optim_method = inversion%get_integer('optim_method',error=io_err)
         if (associated(io_err)) call exit_mpi(myrank, trim(io_err%message))
+        if (this%inversion%optim_method == 1 .and. this%output%verbose_level < 1) then
+          call exit_mpi(myrank, 'optim_method=1 requires verbose_level >= 1')
+        end if
         this%inversion%maxshrink = inversion%get_real('maxshrink',error=io_err)
         if (associated(io_err)) call exit_mpi(myrank, trim(io_err%message))
         this%inversion%max_sub_niter = inversion%get_integer('max_sub_niter',error=io_err)

@@ -302,12 +302,12 @@ contains
     logical, intent(out) :: isbreak
 
     isbreak = .false.
-    if (acqui%iter > iter_store) then
-      misfit_prev = sum(acqui%misfits(acqui%iter-iter_store:acqui%iter-1))/iter_store
-      misfit_curr = sum(acqui%misfits(acqui%iter-iter_store+1:acqui%iter))/iter_store
+    if (acqui%iter > m_store) then
+      misfit_prev = sum(acqui%misfits(acqui%iter-m_store:acqui%iter-1))/m_store
+      misfit_curr = sum(acqui%misfits(acqui%iter-m_store+1:acqui%iter))/m_store
       misfit_diff = (misfit_prev-misfit_curr)/misfit_prev
       write(this%message,'(a,i2,a,F10.8)') 'Misfit change of last', &
-            iter_store,' iterations: ',misfit_diff
+            m_store,' iterations: ',misfit_diff
       call write_log(this%message,1,this%module)
       if (abs(misfit_diff) < ap%inversion%min_derr) isbreak = .true.
     endif    
