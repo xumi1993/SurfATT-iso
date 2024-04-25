@@ -211,6 +211,7 @@ contains
       call aq%sr%to_csv(trim(fname))
     endif
     call synchronize_all()
+    call sync_from_main_rank(this%misfits, ap%inversion%niter)
     
   end subroutine eikokernel
 
@@ -250,7 +251,7 @@ contains
     character(len=MAX_STRING_LEN) :: secname
     logical :: is_break
 
-    call write_log('Optimizing using halving stepping...',1,this%module)
+    call write_log('Optimizing using LBFGS method...',1,this%module)
     updatemax = ap%inversion%step_length
     if (myrank == 0) then
       call write_gradient()
@@ -267,7 +268,6 @@ contains
     call synchronize_all()
     do sit = 1, ap%inversion%max_sub_niter
       call prepare_fwd_linesearch()
-      if (iter == iter_start+1) exit
       write(this%message, '(a,i3.3,a)') 'Sub-iteration ',sit, ' for line search.'
       call write_log(this%message,1,this%module)
       chi = 0
@@ -320,14 +320,14 @@ contains
     p0 = this%misfits(iter)
     if (pt > p0 ) then
       write(this%message, '(a,F0.4,a,F0.4)') 'Misfit ',pt, ' larger than ', p0
-      call write_log(this%message, 1, this%module)
-      call write_log('step length is too large', 1, this%module)
+      call write_log(this%message, 0, this%module)
+      call write_log('step length is too large', 0, this%module)
       updatemax = updatemax * ap%inversion%maxshrink
       is_break = .false.
     else
       write(this%message, '(a,F0.4,a,F0.4)') 'Misfit reduced from ',p0,' to ',pt
       call write_log(this%message,0,this%module)
-      write(this%message, '(a,F0.4," is ok, break sub-iterations for line search")') 'Step length of ',updatemax
+      write(this%message, '(a,F0.4," is ok, break line search")') 'Step length of ',updatemax
       call write_log(this%message,1,this%module)
       is_break = .true.
     endif
