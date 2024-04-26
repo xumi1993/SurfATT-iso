@@ -249,6 +249,68 @@ contains
 
   end subroutine argparse_rotate_topo
 
+  subroutine argparse_rotate_model(fname, angle, center, outfname)
+    use ieee_arithmetic
+    character(len=MAX_STRING_LEN),dimension(:), allocatable :: args
+    character(len=MAX_STRING_LEN) :: arg, value
+    character(len=MAX_STRING_LEN),intent(out) :: fname, outfname
+    real(kind=dp), intent(out) :: angle, center(2)
+    real(kind=dp) :: nan
+    integer :: i,nargs,m,ier,nopt=4
+
+    nargs = command_argument_count()
+    allocate(args(nargs))
+    do i = 1, nargs
+      call get_command_argument(i, args(i))
+    enddo
+    angle = 0.
+    nan = ieee_value(nan, ieee_quiet_nan)
+    center = [nan, nan]
+    if (nargs==0 .or. any(args == '-h')) then
+      write(*,*)'Usage: surfatt_rotate_model -i model_file -a angle -c clat/clon -o out_model_file' // &
+                ' [-h]'
+      write(*,*)''
+      write(*,*)'Rotate model by a given angle (anti-clockwise) and convert to csv format. '// &
+                'If angle and center location are not provided, '// &
+                'the model will be converted to csv format directly without rotation'
+      write(*,*)''
+      write(*,*)'required arguments:'
+      write(*,*)' -i model_file        Path to model file in netcdf format'
+      write(*,*)' -o out_file          Output file name'
+      write(*,*)''
+      write(*,*)'optional arguments:'
+      write(*,*)' -a angle             Angle in degree to rotate model'
+      write(*,*)' -c clat/clon         Center of rotation in latitude and longitude'
+      write(*,*)' -h                   Print help message'
+    endif
+    m = 0
+    do i = 1, nargs
+      arg = args(i)
+      if (arg(1:2) == '-h') then
+        stop
+      elseif (arg(1:2) == '-i') then
+        m = m+1
+        fname = args(i+1)
+      elseif(arg(1:2) == '-a') then
+        m = m+1
+        read(args(i+1),*,iostat=ier) angle
+        if(ier/=0)stop 'Cannot parse angle in real format'
+      elseif (arg(1:2) == '-c') then
+        m = m+1
+        call parse_2string_dp(args(i+1), center)
+      elseif (arg(1:2) == '-o') then
+        m = m+1
+        outfname = args(i+1)
+      endif
+    enddo
+    if (m<1) then
+      stop 'not enough arguments'
+    elseif(m>nopt) then
+      stop 'too many arguments'
+    endif
+
+  end subroutine argparse_rotate_model
+
   subroutine argparse_tomo2d(fname, isfwd, ncb, pert_vel, hmarg)
     character(len=MAX_STRING_LEN),dimension(:), allocatable :: args
     character(len=MAX_STRING_LEN) :: arg, value
