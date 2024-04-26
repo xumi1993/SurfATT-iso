@@ -71,7 +71,7 @@ program rotate_model
     write(*,*) 'Cannot open '//trim(output_file)
     stop 
   endif
-  call fp%add(['lat', 'lon', 'dep', 'vs'], trim_str=.true.)
+  call fp%add(['lat', 'lon', 'dep', 'vs '], trim_str=.true.)
   call fp%next_row()
   do i = 1, nx*ny*nz
     call fp%add(vs_xyz(i, 1), real_fmt='(F9.4)')

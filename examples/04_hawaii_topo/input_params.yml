@@ -12,7 +12,7 @@ output:
   log_level: 1 # 0 debug mode, 1 verbose mode
 
 domain:
-  depth: [0, 10] # depth range in km
+  depth: [0, 15] # depth range in km
   interval: [0.01, 0.01, 0.5] # x, y, z in km
   num_grid_margin: 5 # number of grid margin
 
@@ -29,10 +29,10 @@ inversion:
   # ------- Regularization --------
   kdensity_coe: 1 # Kdensity_coe is used to rescale the final kernel:  kernel -> kernel / pow(density of kernel, Kdensity_coe).
   ncomponents: 5 # number of multiple grid
-  n_inv_grid: [8, 9, 8]
+  n_inv_grid: [8, 9, 10]
   # ------- Inversion parameters --------
   niter: 40 # max iterations
-  min_derr: 0.0015 # minimum error change
+  min_derr: 0.0001 # minimum error change
   # ------- optimization parameters -------
   optim_method: 1 # 0: SD (adeptive step length); 1: LBFGS (line search)
   step_length: 0.02 # starting step length
