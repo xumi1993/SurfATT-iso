@@ -45,6 +45,7 @@ ${SOURCE_DIR}/surfatt_cb_fwd.f90
 ${SOURCE_DIR}/surfatt_tomo2d.f90
 ${SOURCE_DIR}/surfatt_rotate_src_rec.f90
 ${SOURCE_DIR}/surfatt_rotate_topo.f90
+${SOURCE_DIR}/surfatt_rotate_model.f90
   )
 foreach(execsourcefile ${APP_SOURCES})
   # get exec name

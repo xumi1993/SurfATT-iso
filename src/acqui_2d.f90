@@ -1,3 +1,15 @@
+!=====================================================================
+!
+!                           S u r f A T T
+!               ---------------------------------------
+!
+!     Main historical authors: Mijian Xu @
+!                     Nanyang Technological University
+!                           (c) October 2023
+!   
+!     Changing History: Mar 2024, Initialize Codes
+!
+!=====================================================================
 module acqui_2d
   use utils
   use para

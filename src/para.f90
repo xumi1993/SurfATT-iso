@@ -99,8 +99,8 @@ module para
         ! get data section
         data_sec => root%get_dictionary('data',required=.true., error=io_err)
         if (associated(io_err)) call exit_mpi(myrank, trim(io_err%message))
-        this%data%src_rec_file_ph = data_sec%get_string('src_rec_file_ph', error=io_err)
-        this%data%src_rec_file_gr = data_sec%get_string('src_rec_file_gr', error=io_err)
+        this%data%src_rec_file_ph = data_sec%get_string('src_rec_file_ph', default='', error=io_err)
+        this%data%src_rec_file_gr = data_sec%get_string('src_rec_file_gr', default='', error=io_err)
         ! if (associated(io_err)) call exit_mpi(myrank, trim(io_err%message))
         this%data%iwave = data_sec%get_integer('iwave', error=io_err)
         if (associated(io_err)) call exit_mpi(myrank, trim(io_err%message))
@@ -123,6 +123,7 @@ module para
         output => root%get_dictionary('output', required=.true., error=io_err)
         if (associated(io_err)) call exit_mpi(myrank, trim(io_err%message))
         this%output%output_path = output%get_string('output_path', error=io_err)
+        if (associated(io_err)) call exit_mpi(myrank, trim(io_err%message))
         log_fname = trim(this%output%output_path)//'/'//trim(log_basename)
         loglevel = output%get_integer('log_level', error=io_err)
         if (loglevel == 0) then
@@ -131,6 +132,7 @@ module para
           this%output%log_level = information_level
         endif
         this%output%verbose_level = output%get_integer('verbose_level', error=io_err)
+        if (associated(io_err)) call exit_mpi(myrank, trim(io_err%message))
 
         ! read domain section
         domain => root%get_dictionary('domain',required=.true., error=io_err)
@@ -141,14 +143,14 @@ module para
         list => domain%get_list('interval',required=.true.,error=io_err)
         if (associated(io_err)) call exit_mpi(myrank, trim(io_err%message))
         call read_real_list(list, this%domain%interval)
-        this%domain%num_grid_margin = domain%get_integer('num_grid_margin',error=io_err)
+        this%domain%num_grid_margin = domain%get_integer('num_grid_margin', default=0, error=io_err)
 
         ! read topo section
         topo => root%get_dictionary('topo',required=.true., error=io_err)
         if (associated(io_err)) call exit_mpi(myrank, trim(io_err%message))
         this%topo%is_consider_topo = topo%get_logical('is_consider_topo',error=io_err)
         if (associated(io_err)) call exit_mpi(myrank, trim(io_err%message))
-        this%topo%topo_file = topo%get_string('topo_file',error=io_err)
+        this%topo%topo_file = topo%get_string('topo_file',default='',error=io_err)
         this%topo%wavelen_factor = topo%get_real('wavelen_factor',error=io_err)
 
         ! read inversion section
@@ -173,11 +175,14 @@ module para
         if (associated(io_err)) call exit_mpi(myrank, trim(io_err%message))
         this%inversion%optim_method = inversion%get_integer('optim_method',error=io_err)
         if (associated(io_err)) call exit_mpi(myrank, trim(io_err%message))
+        if (this%inversion%optim_method == 1 .and. this%output%verbose_level < 1) then
+          call exit_mpi(myrank, 'optim_method=1 requires verbose_level >= 1')
+        end if
         this%inversion%maxshrink = inversion%get_real('maxshrink',error=io_err)
         if (associated(io_err)) call exit_mpi(myrank, trim(io_err%message))
-        this%inversion%max_sub_niter = inversion%get_integer('max_sub_niter',error=io_err)
-        this%inversion%kdensity_coe = inversion%get_real('kdensity_coe',error=io_err)
-        this%inversion%sigma_2d = inversion%get_real('sigma_2d',error=io_err)
+        this%inversion%max_sub_niter = inversion%get_integer('max_sub_niter',default=10,error=io_err)
+        this%inversion%kdensity_coe = inversion%get_real('kdensity_coe',default=0.0,error=io_err)
+        this%inversion%sigma_2d = inversion%get_real('sigma_2d',default=0.0,error=io_err)
 
       end select
       call root%finalize()

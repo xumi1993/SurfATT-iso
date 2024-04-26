@@ -16,3 +16,6 @@ gmt grdcut @earth_relief_01m -R-157/-152/18/21 -Ghawaii.nc
 
 # inversion 
 mpirun -np $NPROC ../../bin/surfatt_tomo -i input_params.yml
+
+# rotate back to original position
+../../bin/surfatt_rotate_model -i OUTPUT_FILES/final_model.h5 -a `echo $angle | awk '{print -$1}'` -c $pos_str -o OUTPUT_FILES/final_model.csv

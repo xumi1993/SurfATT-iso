@@ -15,6 +15,7 @@ module tomo
   use model, am => att_model_global
   use acqui, aq_ph => att_acqui_global_ph, aq_gr => att_acqui_global_gr
   use decomposer, amd => att_mesh_decomposer_global
+  use optimize
   use measadj
   use utils
   use hdf5_interface
@@ -25,7 +26,6 @@ module tomo
 
   integer, private :: iter, itype, OID
   real(kind=dp), private :: updatemax
-  character(len=MAX_STRING_LEN) :: model_fname
   type(hdf5_file) :: h
 
   type, public ::  att_tomo
@@ -37,7 +37,8 @@ module tomo
   contains
     procedure :: init => initialize_tomo
     procedure :: do_forward, do_inversion
-    procedure, private :: eikokernel,break_iter,initialize_inv, line_search, reset_opt, steepest_descent
+    procedure, private :: eikokernel,break_iter,initialize_inv, line_search, reset_opt,&
+                          steepest_descent,backtracking_condition
   end type
 
   integer :: win_misfits
@@ -64,7 +65,7 @@ contains
         call write_log(errmsg, 3, this%module)
         call exit_MPI(myrank, errmsg)
       endif
-      model_fname = trim(ap%output%output_path)//"/"//modfile
+      model_fname = trim(ap%output%output_path)//"/"//trim(modfile)
       ! call initialize_files()
     endif
     do itype = 1, 2
@@ -96,6 +97,7 @@ contains
         call h%add('/lat', am%ygrids)
         call h%add('/dep', am%zgrids)
         call h%add('/vs_000', transpose_3(am%vs3d))
+        call h%close(finalize=.true.)
       endif
     endif
     call synchronize_all()
@@ -175,7 +177,7 @@ contains
     enddo
     ! write final model
     call am%write('final_model')
-    if (myrank == 0 .and. ap%output%verbose_level > 0) call h%close(finalize=.true.)
+    ! if (myrank == 0 .and. ap%output%verbose_level > 0) call h%close(finalize=.true.)
     close(OID)
     call write_log('Inversion is done.',1,this%module)
   end subroutine do_inversion
@@ -209,6 +211,7 @@ contains
       call aq%sr%to_csv(trim(fname))
     endif
     call synchronize_all()
+    call sync_from_main_rank(this%misfits, ap%inversion%niter)
     
   end subroutine eikokernel
 
@@ -246,32 +249,36 @@ contains
     real(kind=dp) :: chi, chi_local
     integer :: sit
     character(len=MAX_STRING_LEN) :: secname
+    logical :: is_break
 
-    call write_log('Optimizing using halving stepping...',1,this%module)
-    call write_gradient()
+    call write_log('Optimizing using LBFGS method...',1,this%module)
+    updatemax = ap%inversion%step_length
+    if (myrank == 0) then
+      call write_gradient()
+      if (iter-1 > iter_start) then
+        call get_lbfgs_condition(iter-1, direction)
+        if (ap%output%verbose_level > 0) then
+          write(secname,'(a,i3.3)') '/direction_',iter-1
+          call h5write(model_fname, secname, transpose_3(direction))
+        endif
+      else
+        direction = -1.0_dp * gradient_s
+      endif
+    endif
+    call synchronize_all()
     do sit = 1, ap%inversion%max_sub_niter
-      call write_log('Starting line search.',1,this%module)
-      chi = 0
       call prepare_fwd_linesearch()
+      write(this%message, '(a,i3.3,a)') 'Sub-iteration ',sit, ' for line search.'
+      call write_log(this%message,1,this%module)
+      chi = 0
       do itype = 1, 2
         if (.not. ap%data%vel_type(itype)) cycle
         call select_type()
         call aq%forward_simulate(chi_local, .false., .false., verbose=.false.)
         chi = chi + chi_local
       enddo
-      if (this%misfits(iter) > chi) then
-        write(this%message, '(a,F0.4,a,F0.4)') 'Misfit reduced from ',this%misfits(iter),' to ',chi
-        call write_log(this%message,0,this%module)
-        write(this%message, '(a,F0.4," is ok, break sub-iterations for line search")') 'Step length of ',updatemax
-        call write_log(this%message,1,this%module)
-        exit
-      else
-        write(this%message, '(a,F0.4,a,F0.4)') 'Misfit increase from ',this%misfits(iter),' to ',chi
-        call write_log(this%message,0,this%module)
-        updatemax = updatemax * ap%inversion%maxshrink
-        write(this%message, '(a,I2.2,a,F0.4)') 'In ',sit,'th sub-iteration, shrink step length to ',updatemax
-        call write_log(this%message,1,this%module)
-      endif
+      call this%backtracking_condition(chi,is_break)
+      if (is_break) exit
     enddo
     if (myrank == 0) then
       ! update & write model
@@ -292,8 +299,8 @@ contains
     real(kind=dp), dimension(:,:,:), allocatable :: gradient_ls
 
     if (myrank == 0) then
-      max_gk = maxval(abs(gradient_s))
-      gradient_ls = -updatemax * gradient_s / max_gk
+      max_gk = maxval(abs(direction))
+      gradient_ls = updatemax * direction / max_gk
       am%vs3d_opt = am%vs3d * (1 + gradient_ls)
       am%vp3d_opt = empirical_vp(am%vs3d_opt)
       am%rho3d_opt = empirical_rho(am%vp3d_opt)    
@@ -304,12 +311,34 @@ contains
     call sync_from_main_rank(am%rho3d_opt, am%n_xyz(1), am%n_xyz(2), am%n_xyz(3))
   end subroutine prepare_fwd_linesearch
 
+  subroutine backtracking_condition(this,pt,is_break)
+    class(att_tomo), intent(inout) :: this
+    real(kind=dp), intent(in) :: pt
+    logical, intent(out) :: is_break
+    real(kind=dp) :: q0, p0
+
+    p0 = this%misfits(iter)
+    if (pt > p0 ) then
+      write(this%message, '(a,F0.4,a,F0.4)') 'Misfit ',pt, ' larger than ', p0
+      call write_log(this%message, 0, this%module)
+      call write_log('step length is too large', 0, this%module)
+      updatemax = updatemax * ap%inversion%maxshrink
+      is_break = .false.
+    else
+      write(this%message, '(a,F0.4,a,F0.4)') 'Misfit reduced from ',p0,' to ',pt
+      call write_log(this%message,0,this%module)
+      write(this%message, '(a,F0.4," is ok, break line search")') 'Step length of ',updatemax
+      call write_log(this%message,1,this%module)
+      is_break = .true.
+    endif
+  end subroutine backtracking_condition
+
   subroutine write_tmp_model()
     character(len=MAX_STRING_LEN) :: secname
 
     if (ap%output%verbose_level > 0) then
       write(secname,'(a,i3.3)') '/vs_',iter
-      call h%add(secname, transpose_3(am%vs3d))
+      call h5write(model_fname, secname, transpose_3(am%vs3d))
     endif
 
   end subroutine write_tmp_model
@@ -319,12 +348,12 @@ contains
 
     if (ap%output%verbose_level > 0) then
       write(secname,'(a,i3.3)') '/gradient_',iter-1  
-      call h%add(secname, transpose_3(gradient_s))
+      call h5write(model_fname, secname, transpose_3(gradient_s))
       do itype = 1, 2
         if (.not. ap%data%vel_type(itype)) cycle
         call select_type()
         write(secname,'(a,a,"_",i3.3)') '/kdensity_',trim(ap%data%gr_name(itype)),iter-1
-        call h%add(secname, transpose_3(aq%ker_density))
+        call h5write(model_fname, secname, transpose_3(aq%ker_density))
       enddo
     endif
 
@@ -346,12 +375,12 @@ contains
     logical, intent(out) :: isbreak
 
     isbreak = .false.
-    if (myrank == 0 .and.  iter > iter_store) then
-      misfit_prev = sum(this%misfits(iter-iter_store:iter-1))/iter_store
-      misfit_curr = sum(this%misfits(iter-iter_store+1:iter))/iter_store
+    if (myrank == 0 .and.  iter > m_store) then
+      misfit_prev = sum(this%misfits(iter-m_store:iter-1))/m_store
+      misfit_curr = sum(this%misfits(iter-m_store+1:iter))/m_store
       misfit_diff = (misfit_prev-misfit_curr)/misfit_prev
       write(this%message,'(a,i2,a,F6.4)') 'Misfit change of last', &
-            iter_store,' iterations: ',misfit_diff
+            m_store,' iterations: ',misfit_diff
       call write_log(this%message,1,this%module)
       if (abs(misfit_diff) < ap%inversion%min_derr) isbreak = .true.
     endif

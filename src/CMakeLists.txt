@@ -14,7 +14,7 @@ file(GLOB SOURCES "${SOURCE_DIR}/*.f90")
 
 set(FILTERED_SOURCE_FILES "")
 foreach(FILE ${SOURCES})
-    if (NOT ${FILE} MATCHES "surfatt.*")
+    if (NOT ${FILE} MATCHES "${SOURCE_DIR}/surfatt_*")
         list(APPEND FILTERED_SOURCE_FILES ${FILE})
     endif()
 endforeach()
