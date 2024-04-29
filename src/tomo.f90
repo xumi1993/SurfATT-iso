@@ -251,7 +251,8 @@ contains
     character(len=MAX_STRING_LEN) :: secname
     logical :: is_break
 
-    call write_log('Optimizing using LBFGS method...',1,this%module)
+    call write_log('Optimizing using '//trim(ap%inversion%optim_name(ap%inversion%optim_method))&
+                    //' method...',1,this%module)
     updatemax = ap%inversion%step_length
     if (myrank == 0) then
       call write_gradient()
