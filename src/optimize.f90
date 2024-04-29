@@ -71,17 +71,19 @@ contains
   end subroutine get_lbfgs_direction
 
   subroutine get_cg_direction(iter, direction)
-    ! get the conjugate gradient direction using Polak-Ribiere formula
-    ! beta = dot_product(g(i), (g(i)-g(i-1)))/dot_product(g(i-1), g(i-1))
+    ! get the conjugate gradient direction using Hager-Zhang formula
     integer, intent(in) :: iter
     real(kind=dp), dimension(:,:,:), allocatable, intent(out) :: direction
-    real(kind=dp), dimension(:,:,:), allocatable :: gradient0,gradient1,direction0
+    real(kind=dp), dimension(:,:,:), allocatable :: gradient0,gradient1,direction0,grad_diff
     real(kind=dp) :: beta
 
     call get_gradient(iter-1, gradient0)
     call get_gradient(iter, gradient1)
     call get_direction(iter-1, direction0)
-    beta = sum(gradient1*(gradient1-gradient0))/sum(gradient0*gradient0)
+    grad_diff = gradient1 - gradient0
+    beta = sum(grad_diff * grad_diff) / sum(grad_diff * direction0)
+    beta = sum(gradient1*(grad_diff-2*direction0*beta)) / sum(direction0*grad_diff)
+    ! beta = sum(gradient1*(gradient1-gradient0))/sum(gradient0*gradient0)
     direction = -gradient1 + beta*direction0
     
   end subroutine get_cg_direction
