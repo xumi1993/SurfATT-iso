@@ -40,7 +40,7 @@ inversion:
   niter: 40 # max iterations
   min_derr: 0.0015 # minimum error change
   # ------- optimization parameters -------
-  optim_method: 1 # 0: SD (adeptive step length); 1: CG (line search); 2: LBFGS (line search)
+  optim_method: 2 # 0: SD (adeptive step length); 1: CG (line search); 2: LBFGS (line search)
   step_length: 0.02 # starting step length
   maxshrink: 0.6 # max step length descent
   # ------- Line search for LBFGS -------

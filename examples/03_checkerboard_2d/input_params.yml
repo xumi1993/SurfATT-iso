@@ -36,7 +36,7 @@ inversion:
   niter: 30 # max iterations
   min_derr: 0.001 # minimum error change
   max_sub_niter: 10 # max sub iterations
-  optim_method: 0 # 0: SD; 1: Halving step
+  optim_method: 0 # 0: SD; 1: CG; 2: LBFGS
   step_length: 0.02 # starting step length
   maxshrink: 0.6 # max step length decent
   kdensity_coe: 0 # Kdensity_coe is used to rescale the final kernel:  kernel -> kernel / pow(density of kernel, Kdensity_coe).
