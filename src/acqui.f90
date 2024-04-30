@@ -27,7 +27,7 @@ module acqui
     type(att_grid), pointer                                :: ag
     type(SrcRec), pointer                                  :: sr
     logical                                                :: is_fwd
-    character(len=MAX_STRING_LEN)                          :: model_fname, module='ACQUI',&
+    character(len=MAX_STRING_LEN)                          :: module='ACQUI',&
                                                               final_fname, gr_name, message
     real(kind=dp), dimension(:,:,:), pointer               :: adj_s, adj_density
     real(kind=dp), dimension(:,:,:), allocatable           :: adj_s_local, adj_density_local
@@ -293,7 +293,7 @@ contains
     integer :: i, j, k
 
     this%adj_s_local(pidx, :,:) = this%adj_s_local(pidx, :,:)+adjtable / this%ag%svel(pidx, :,:)**3
-    this%adj_density_local(pidx, :,:) = this%adj_density_local(pidx, :,:)+kden
+    this%adj_density_local(pidx, :,:) = this%adj_density_local(pidx, :,:)+kden / this%ag%svel(pidx, :,:)**3
   end subroutine post_proc_eikokernel
 
   subroutine allocate_shm_arrays(this)

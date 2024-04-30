@@ -18,7 +18,8 @@ module constants
 
   real(kind=dp), parameter :: precond_thres = 1.0d-4
   integer, parameter :: max_iter_1d = 40
-  integer, parameter :: iter_store = 6
+  integer, parameter :: m_store = 5
+  integer, parameter :: iter_start = 0
 
 end module constants
 
@@ -31,6 +32,6 @@ module shared_par
   integer, dimension(:,:), allocatable :: rank_map
   integer :: LID
   integer :: loglevel
-  real(kind=dp), dimension(:,:,:), allocatable :: gradient_s
-  character(len=MAX_STRING_LEN) :: log_fname
+  real(kind=dp), dimension(:,:,:), allocatable :: gradient_s, direction
+  character(len=MAX_STRING_LEN) :: log_fname, model_fname
 end module shared_par

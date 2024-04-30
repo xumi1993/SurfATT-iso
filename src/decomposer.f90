@@ -1,3 +1,15 @@
+!=====================================================================
+!
+!                           S u r f A T T
+!               ---------------------------------------
+!
+!     Main historical authors: Mijian Xu @
+!                     Nanyang Technological University
+!                           (c) October 2023
+!   
+!     Changing History: Apl 2024, Initialize Codes
+!
+!=====================================================================
 module decomposer
 
   use shared_par
@@ -25,14 +37,7 @@ contains
     integer, dimension(mysize,2) :: loc_ix, loc_iy
     integer :: max_rank_x, max_rank_y, myrank_value
     
-    call close_factors(mysize, f1, f2)
-    if (nx <= ny) then
-      this%glob_px = f1
-      this%glob_py = f2
-    else
-      this%glob_px = f2
-      this%glob_py = f1
-    end if
+    call close_factors(nx, ny, mysize, this%glob_px, this%glob_py)
 
     if (nx < this%glob_px .or. ny < this%glob_py) then
       call exit_MPI(myrank,'Error: Number of processors is larger than the number of cells')
@@ -184,16 +189,24 @@ contains
 
   end subroutine collect_sen
 
-  subroutine close_factors(num, f1, f2)
-    integer :: num, f1, f2, i, dif
-
-    f1 = 1; f2 = num; dif = f2-f1
-    do i = 2, int(sqrt(real(num)))
+  subroutine close_factors(nx, ny, num, f1o, f2o)
+    integer, intent(in) :: num, nx, ny
+    integer, intent(out) :: f1o, f2o
+    integer :: f1, f2, i
+    real :: dif0,dd,dif1
+    
+    dif0 = real(nx)/real(ny)
+    f1 = 1; f2 = num
+    f1o = f1; f2o = f2
+    dd = abs(dif0 - real(f1)/real(f2))
+    do i = 2, num
       if (mod(num, i) == 0) then
         f1 = i
         f2 = num / i
-        if (f2 - f1 < dif) then
-          dif = f2 - f1
+        dif1 = real(f1)/real(f2)
+        if (abs(dif0-dif1) < dd) then
+          dd = abs(dif0-dif1)
+          f1o = f1; f2o=f2
           cycle
         else
           return
