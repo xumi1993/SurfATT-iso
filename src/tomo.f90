@@ -251,18 +251,23 @@ contains
     character(len=MAX_STRING_LEN) :: secname
     logical :: is_break
 
-    call write_log('Optimizing using LBFGS method...',1,this%module)
+    call write_log('Optimizing using '//trim(ap%inversion%optim_name(ap%inversion%optim_method))&
+                    //' method...',1,this%module)
     updatemax = ap%inversion%step_length
     if (myrank == 0) then
       call write_gradient()
       if (iter-1 > iter_start) then
-        call get_lbfgs_condition(iter-1, direction)
-        if (ap%output%verbose_level > 0) then
-          write(secname,'(a,i3.3)') '/direction_',iter-1
-          call h5write(model_fname, secname, transpose_3(direction))
+        if (ap%inversion%optim_method == 1) then
+          call get_cg_direction(iter-1, direction)
+        elseif (ap%inversion%optim_method == 2) then
+          call get_lbfgs_direction(iter-1, direction)
         endif
       else
         direction = -1.0_dp * gradient_s
+      endif
+      if (ap%output%verbose_level > 0) then
+        write(secname,'(a,i3.3)') '/direction_',iter-1
+        call h5write(model_fname, secname, transpose_3(direction))
       endif
     endif
     call synchronize_all()

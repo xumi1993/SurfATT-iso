@@ -18,7 +18,7 @@ module optimize
 
   implicit none
 contains
-  subroutine get_lbfgs_condition(iter, direction)
+  subroutine get_lbfgs_direction(iter, direction)
     integer, intent(in) :: iter
     real(kind=dp), dimension(:,:,:), allocatable, intent(out) :: direction
     real(kind=dp), dimension(:,:,:), allocatable :: gradient0,gradient1,model0,model1,&
@@ -68,7 +68,25 @@ contains
     enddo
     direction = -1.0_dp * r_vector
 
-  end subroutine get_lbfgs_condition
+  end subroutine get_lbfgs_direction
+
+  subroutine get_cg_direction(iter, direction)
+    ! get the conjugate gradient direction using Hager-Zhang formula
+    integer, intent(in) :: iter
+    real(kind=dp), dimension(:,:,:), allocatable, intent(out) :: direction
+    real(kind=dp), dimension(:,:,:), allocatable :: gradient0,gradient1,direction0,grad_diff
+    real(kind=dp) :: beta
+
+    call get_gradient(iter-1, gradient0)
+    call get_gradient(iter, gradient1)
+    call get_direction(iter-1, direction0)
+    grad_diff = gradient1 - gradient0
+    beta = sum(grad_diff * grad_diff) / sum(grad_diff * direction0)
+    beta = sum(gradient1*(grad_diff-2*direction0*beta)) / sum(direction0*grad_diff)
+    ! beta = sum(gradient1*(gradient1-gradient0))/sum(gradient0*gradient0)
+    direction = -gradient1 + beta*direction0
+    
+  end subroutine get_cg_direction
 
   subroutine get_model(iter, model)
     integer, intent(in) :: iter
@@ -90,5 +108,16 @@ contains
     gradient = transpose_3(gradient)
 
   end subroutine get_gradient
+
+  subroutine get_direction(iter, direction)
+    integer, intent(in) :: iter
+    real(kind=dp), dimension(:,:,:), allocatable, intent(out) :: direction
+    character(len=MAX_NAME_LEN) :: key_name
+
+    write(key_name, '("/direction_",I3.3)') iter
+    call h5read(model_fname, key_name, direction)
+    direction = transpose_3(direction)
+
+  end subroutine
 end module optimize
 

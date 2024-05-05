@@ -52,6 +52,7 @@ module para
                                                               init_model_type,niter,max_sub_niter=10, &
                                                               optim_method=0
     character(len=MAX_STRING_LEN)                          :: init_model_path
+    character(len=MAX_NAME_LEN), dimension(2)              :: optim_name = ['CG   ', 'LBFGS']
     real(kind=dp)                                          :: vel_range(2), step_length, min_derr=0.001,&
                                                               kdensity_coe=0.5, maxshrink=0.8, sigma_2d=0.
   end type para_inversion
