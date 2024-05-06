@@ -37,9 +37,6 @@ contains
 
   subroutine init_tomo_2d(this)
     class(att_tomo_2d), intent(inout) :: this
-    character(MAX_STRING_LEN) :: errmsg
-    integer :: stat, i, j
-    integer, dimension(:,:), allocatable :: isrcs
 
     do itype = 1, 2
       if (.not. ap%data%vel_type(itype)) cycle
