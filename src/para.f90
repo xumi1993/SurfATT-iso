@@ -90,6 +90,8 @@ module para
     class (type_list), pointer :: list
     class (type_list_item), pointer :: item
     type (type_error), pointer :: io_err
+    integer :: stat
+    character(len=MAX_STRING_LEN) :: errmsg
 
     if (myrank == 0) then
       root => parse(fname, error = error)
@@ -125,6 +127,11 @@ module para
         if (associated(io_err)) call exit_mpi(myrank, trim(io_err%message))
         this%output%output_path = output%get_string('output_path', error=io_err)
         if (associated(io_err)) call exit_mpi(myrank, trim(io_err%message))
+        call EXECUTE_COMMAND_LINE('mkdir -p '//trim(this%output%output_path),&
+                                  exitstat=stat, cmdmsg=errmsg)
+        if (stat /= 0) then
+          call exit_MPI(myrank, errmsg)
+        endif
         log_fname = trim(this%output%output_path)//'/'//trim(log_basename)
         loglevel = output%get_integer('log_level', error=io_err)
         if (loglevel == 0) then
