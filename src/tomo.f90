@@ -49,8 +49,6 @@ contains
   subroutine initialize_tomo(this, is_fwd)
     class(att_tomo), intent(inout) :: this
     logical, optional, intent(in) :: is_fwd
-    integer :: stat
-    character(len=MAX_STRING_LEN) :: errmsg
 
     if (present(is_fwd)) then
       this%is_fwd = is_fwd
@@ -58,16 +56,7 @@ contains
       this%is_fwd = .false.
     endif
 
-    if (myrank == 0) then
-      call EXECUTE_COMMAND_LINE('mkdir -p '//trim(ap%output%output_path),&
-                                exitstat=stat, cmdmsg=errmsg)
-      if (stat /= 0) then
-        call write_log(errmsg, 3, this%module)
-        call exit_MPI(myrank, errmsg)
-      endif
-      model_fname = trim(ap%output%output_path)//"/"//trim(modfile)
-      ! call initialize_files()
-    endif
+    model_fname = trim(ap%output%output_path)//"/"//trim(modfile)
     do itype = 1, 2
       if(.not. ap%data%vel_type(itype)) cycle
       call select_type()
