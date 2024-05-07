@@ -39,6 +39,7 @@ program rotate_model
   call hf%get('/lat', lat)
   call hf%get('/dep', dep)
   call hf%get('/vs', vs3d)
+  call hf%close()
   vs3d = transpose_3(vs3d)
 
   ! flatten vs3d
