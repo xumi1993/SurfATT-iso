@@ -37,9 +37,6 @@ contains
 
   subroutine init_tomo_2d(this)
     class(att_tomo_2d), intent(inout) :: this
-    character(MAX_STRING_LEN) :: errmsg
-    integer :: stat, i, j
-    integer, dimension(:,:), allocatable :: isrcs
 
     do itype = 1, 2
       if (.not. ap%data%vel_type(itype)) cycle
@@ -48,12 +45,6 @@ contains
       call acqui%sr%scatter_src_gather()
     enddo
     if (myrank == 0) then
-      call EXECUTE_COMMAND_LINE('mkdir -p '//trim(ap%output%output_path),&
-                                exitstat=stat, cmdmsg=errmsg)
-      if (stat /= 0) then
-        call write_log(errmsg, 3, this%module)
-        call exit_MPI(myrank, errmsg)
-      endif
       if (ap%inversion%sigma_2d == 0.0_dp) then
         call write_log('Please setup sigma_2d for smoothing.',3,this%module)
         stop
