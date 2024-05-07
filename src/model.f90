@@ -134,8 +134,8 @@ module model
     nset = ap%inversion%ncomponents
     
     ixgrids = linspace( &
-      this%xgrids(1) - (this%xgrids(this%n_xyz(1))-this%xgrids(1))/(ninvx-2),&
-      this%xgrids(this%n_xyz(1)) + (this%xgrids(this%n_xyz(1))-this%xgrids(1))/(ninvx-2),&
+      this%xgrids(1) - (this%xgrids(this%n_xyz(1))-this%xgrids(1))/(ninvx-2)/2.0,&
+      this%xgrids(this%n_xyz(1)) + (this%xgrids(this%n_xyz(1))-this%xgrids(1))/(ninvx-2)/2.0,&
       ninvx)
     ! ixgrids = linspace( &
     !   this%xgrids(1) - (this%xgrids(this%n_xyz(1))-this%xgrids(1))/(ninvx-2),&
@@ -158,8 +158,12 @@ module model
     this%zinv = zeros(ninvz, nset)
     polar = 1
     do i = 1, nset
-      polar = -polar
-      this%xinv(:, i) = ixgrids+polar*(i-1)*(ixgrids(2)-ixgrids(1))/(nset+1)
+      if (i == 1) then
+        this%xinv(:, i) = ixgrids
+      else
+        this%xinv(:, i) = this%xinv(:, i-1) + polar*(i-1)*(ixgrids(2)-ixgrids(1))/(nset+1)
+        polar = -polar
+      endif
       this%yinv(:, i) = iygrids+(i-1)*(iygrids(2)-iygrids(1))/(nset+1)
       this%zinv(:, i) = izgrids+(i-1)*zadd
     enddo
