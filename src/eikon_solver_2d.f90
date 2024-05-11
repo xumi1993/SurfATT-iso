@@ -845,7 +845,7 @@ subroutine FSM_UW_PS_lonlat_2d(xx_deg,yy_deg,nx,ny,spha,sphb,sphc,T,fun,x0_deg,y
     do iix=1,nx
         do iiy=1,ny
             tmp_T0 = sin(yy(iiy))*sin(y0)+ cos(yy(iiy))*cos(y0)*cos(xx(iix)-x0)
-            T0(iix,iiy) = acos(tmp_T0) * R_earth * fun0
+            T0(iix,iiy) = acos(max(min(1.0, tmp_T0), -1.0)) * R_earth * fun0
 
             if (T0(iix,iiy) .eq. 0) then
                 T0x(iix,iiy) = 0
