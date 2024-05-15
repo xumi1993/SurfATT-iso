@@ -13,14 +13,9 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-    - name: Setup conda
-      uses: conda-incubator/setup-miniconda@v3
-      with:
-        activate-environment: surfatt
-        channels: conda-forge
     - name: Install dependencies
       run: |
-          conda install openmpi cxx-compiler fortran-compiler cmake hdf5
+         sudo apt install build-essential gfortran cmake libopenmpi-dev openmpi-bin libhdf5-dev
     - name: make
       run: |
         mkdir build && cd build
