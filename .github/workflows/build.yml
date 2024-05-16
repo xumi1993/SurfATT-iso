@@ -7,15 +7,25 @@ on:
     branches: [ "main" ]
 
 jobs:
-  build:
-
+  LinuxBuild:
     runs-on: ubuntu-latest
-
     steps:
     - uses: actions/checkout@v4
     - name: Install dependencies
       run: |
          sudo apt install build-essential gfortran cmake libopenmpi-dev openmpi-bin libhdf5-dev
+    - name: make
+      run: |
+        mkdir build && cd build
+        cmake .. && make -j 4
+
+  MacosBuild:
+    runs-on: macos-latest
+    step:
+    - uses: actions/checkout@v4
+    - name: Install dependencies
+      run: |
+        brew install gcc cmake open-mpi hdf5
     - name: make
       run: |
         mkdir build && cd build
