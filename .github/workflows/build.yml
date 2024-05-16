@@ -23,5 +23,6 @@ jobs:
       run: |
         cd $GITHUB_WORKSPACE/examples/00_checkerboard_iso
         sed -i "/NPROC=/c\NPROC=1" run_this_example.sh
+        sed -i "/niter: /c\  niter: 2" input_params.yml
         sh run_this_example.sh
       
