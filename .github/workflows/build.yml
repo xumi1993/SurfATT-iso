@@ -25,8 +25,8 @@ jobs:
     - uses: actions/checkout@v4
     - name: Install dependencies
       run: |
-        brew install gcc cmake open-mpi hdf5
+        brew install gcc@13 cmake open-mpi hdf5
     - name: make
       run: |
         mkdir build && cd build
-        cmake .. && make -j 4
+        CXX=gcc-13 FC=gfortran-13 cmake .. && make -j 4
