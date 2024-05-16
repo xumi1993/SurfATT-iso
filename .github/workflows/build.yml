@@ -7,7 +7,7 @@ on:
     branches: [ "main" ]
 
 jobs:
-  LinuxBuild:
+  LinuxTest:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
@@ -19,14 +19,9 @@ jobs:
         mkdir build && cd build
         cmake .. && make -j 4
 
-  MacosBuild:
-    runs-on: macos-latest
-    steps:
-    - uses: actions/checkout@v4
-    - name: Install dependencies
+    - name: test
       run: |
-        brew install gcc@13 cmake open-mpi hdf5
-    - name: make
-      run: |
-        mkdir build && cd build
-        CXX=gcc-13 FC=gfortran-13 cmake .. && make -j 4
+        cd $GITHUB_WORKSPACE/examples/00_checkerboard_iso
+        sed -i "/NPROC=/c\NPROC=4" run_this_example.sh
+        sh run_this_example.sh
+      
