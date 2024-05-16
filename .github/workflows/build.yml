@@ -21,7 +21,7 @@ jobs:
 
   MacosBuild:
     runs-on: macos-latest
-    step:
+    steps:
     - uses: actions/checkout@v4
     - name: Install dependencies
       run: |
