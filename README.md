@@ -2,6 +2,8 @@
 
 [![Language](https://img.shields.io/badge/-Fortran-734f96?logo=fortran&logoColor=white)](https://github.com/topics/fortran)
 [![License](https://img.shields.io/github/license/xumi1993/seispy)]()
+[![Build SurfATT](https://github.com/xumi1993/SurfATT-iso/actions/workflows/build.yml/badge.svg)](https://github.com/xumi1993/SurfATT-iso/actions/workflows/build.yml)
+
 This is an innovative package for **Surf**ace wave **A**djoint **T**ravel-time **T**omography driven by modern fortran with highlights:
 
 - Calculation of surface wave travel time based on **Eikonal equation** with fast sweeping method ([Tong, 2021a](https://doi.org/10.1029/2021JB021818))
