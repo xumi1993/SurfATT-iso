@@ -9,6 +9,7 @@ This is an innovative package for **Surf**ace wave **A**djoint **T**ravel-time *
 - Computation of sensitivity kernels through **adjoint method** ([Tong, 2021b](https://doi.org/10.1029/2021JB022365))
 - **Multi-grid model parametrization** utilization in optimization ([Tong et al., 2019](https://doi.org/10.1093/gji/ggz151))
 - Consideration of **surface topography** ([Hao et al., 2024a](https://doi.org/10.1029/2023JB027454))
+![Fig2](https://github.com/xumi1993/SurfATT-iso/assets/7437523/f9a0155b-7b83-4970-914d-f13dc42b11e5)
 
 ## Installation
 
