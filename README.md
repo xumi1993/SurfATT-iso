@@ -21,4 +21,4 @@ mpirun -np 4 bin/surfatt_tomo -i input_params.yml
 ```
 
 ### A quick example
-A case named `test/00_checkerboard_iso` presents an example of inversion for 2x3x2 checkers using ambient noise surface wave data from 25 stations. execute run_this_example.sh to run this example under 5 processors.
+A case named `test/00_checkerboard_iso` presents an example of inversion for 2x3x2 checkers using ambient noise surface wave data from 25 stations. execute `run_this_example.sh` to run this example under 8 processors.
