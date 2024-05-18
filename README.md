@@ -10,7 +10,8 @@ This is an innovative package for **Surf**ace wave **A**djoint **T**ravel-time *
 - Consideration of **surface topography** ([Hao et al., 2024a](https://doi.org/10.1029/2023JB027454))
 
 ## Gallery
-### Travel time field and sensitivity kernel on curved surface
+
+### Travel time field and sensitivity kernel on curved surface ([Hao et al., 2024a](https://doi.org/10.1029/2023JB027454))
 ![jgrb56585-fig-0001-m](https://github.com/xumi1993/SurfATT-iso/assets/7437523/49e205a3-7529-4079-a8c2-471c6e7075fc)
 -------
 
