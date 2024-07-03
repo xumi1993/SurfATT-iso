@@ -13,6 +13,7 @@ data:
 
 output:
   output_path: OUTPUT_FILES/ # path to save output files
+  verbose_level: 1
   log_level: 1 # 0 debug mode, 1 verbose mode
 
 domain:
