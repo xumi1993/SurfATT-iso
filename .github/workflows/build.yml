@@ -1,0 +1,28 @@
+name: Build SurfATT
+
+on:
+  push:
+    branches: [ "devel" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  LinuxTest:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install dependencies
+      run: |
+         sudo apt install build-essential gfortran cmake libopenmpi-dev openmpi-bin libhdf5-dev
+    - name: make
+      run: |
+        mkdir build && cd build
+        cmake .. && make -j 4
+
+    - name: test
+      run: |
+        cd $GITHUB_WORKSPACE/examples/00_checkerboard_iso
+        sed -i "/NPROC=/c\NPROC=1" run_this_example.sh
+        sed -i "/niter: /c\  niter: 2" input_params.yml
+        sh run_this_example.sh
+      
