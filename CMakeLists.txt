@@ -2,7 +2,22 @@ cmake_minimum_required(VERSION 3.8)
 
 # set the project name
 set(CMAKE_PROJECT_NAME "SurfATT")
-project(${CMAKE_PROJECT_NAME} VERSION 1.4.1 LANGUAGES Fortran CXX)
+project(${CMAKE_PROJECT_NAME} VERSION 1.5.0 LANGUAGES Fortran CXX)
+
+# set the version number and git commit hash
+execute_process(
+    COMMAND git rev-parse --short HEAD
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    OUTPUT_VARIABLE GIT_COMMIT_HASH
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+
+message(${GIT_COMMIT_HASH})
+
+configure_file(
+  ${PROJECT_SOURCE_DIR}/include/version.h.in
+  ${PROJECT_SOURCE_DIR}/include/version.h
+)
 
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 set(CMAKE_Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/modules)
@@ -29,7 +44,17 @@ message(STATUS "HDF5_FOUND: ${HDF5_FOUND}")
 message(STATUS "HDF5_VERSION: ${HDF5_VERSION}")
 
 # add sub modules
-add_subdirectory("${PROJECT_SOURCE_DIR}/external_libs")
+find_package(yaml-cpp 0.8 QUIET)
+if (yaml-cpp_FOUND)
+  message(STATUS "yaml-cpp found")
+  message(STATUS "YAML_CPP_INCLUDE_DIR: ${YAML_CPP_INCLUDE_DIR}")
+  message(STATUS "YAML_CPP_LIBRARIES: ${YAML_CPP_LIBRARIES}")
+else()
+  message(STATUS "yaml-cpp not found. Using external_libs/yaml-cpp ...")
+  add_subdirectory("${PROJECT_SOURCE_DIR}/external_libs")
+  set(YAML_CPP_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/external_libs/yaml-cpp/include)
+  set(YAML_CPP_LIBRARIES yaml-cpp)
+endif()
 
 # surfatt_modules
 add_subdirectory("${SOURCE_DIR}")

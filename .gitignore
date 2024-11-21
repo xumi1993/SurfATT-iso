@@ -8,6 +8,7 @@ Photo.run
 build
 *.a
 *.dylib
+.vscode/
 
 build/
 bin/
@@ -32,3 +33,4 @@ benchmark_*
 slurm-*
 slurm_*
 fort.*
+version.h

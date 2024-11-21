@@ -1,0 +1,4 @@
+integer, parameter :: PROJECT_VERSION_MAJOR = @PROJECT_VERSION_MAJOR@
+integer, parameter :: PROJECT_VERSION_MINOR = @PROJECT_VERSION_MINOR@
+integer, parameter :: PROJECT_VERSION_PATCH = @PROJECT_VERSION_PATCH@
+character(len=10), parameter :: GIT_COMMIT = "@GIT_COMMIT_HASH@"
