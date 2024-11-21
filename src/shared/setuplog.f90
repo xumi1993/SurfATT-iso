@@ -9,9 +9,14 @@ contains
   subroutine setuplog(log_level)
     integer :: stat, log_level
 
+    call get_version()
     if (myrank == 0) then
       call logger%add_log_file(log_fname, LID, stat=stat)      
       call logger%configure(level=log_level, time_stamp=.true.)
+      call write_log('======================================================', 1, 'MAIN')
+      call write_log('----------- SurfATT '//trim(VERSION)//', commit: ' &
+                     //trim(GIT_COMMIT)//' -----------', 1, 'MAIN')
+      call write_log('======================================================', 1, 'MAIN')
     endif
     call synchronize_all()    
   end subroutine setuplog

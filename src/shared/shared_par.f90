@@ -1,5 +1,6 @@
 module constants
   include "constants.h"
+  include "version.h"
 
   ! if NUMBER_OF_SIMULTANEOUS_RUNS > 1
   character(len=MAX_STRING_LEN) :: OUTPUT_FILES = 'OUTPUT_FILES'
@@ -34,4 +35,10 @@ module shared_par
   integer :: loglevel
   real(kind=dp), dimension(:,:,:), allocatable :: gradient_s, direction
   character(len=MAX_STRING_LEN) :: log_fname, model_fname
+  character(len=MAX_STRING_LEN) :: VERSION
+
+contains
+  subroutine get_version()
+    write(VERSION, '(I0,".",I0,".",I0)') PROJECT_VERSION_MAJOR, PROJECT_VERSION_MINOR, PROJECT_VERSION_PATCH
+  end subroutine get_version
 end module shared_par

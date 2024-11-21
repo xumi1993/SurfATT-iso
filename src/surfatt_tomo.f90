@@ -19,7 +19,7 @@ program surfatt_tomo
   use grid, ag_gr => att_grid_global_gr, ag_ph => att_grid_global_ph
   use measadj
   use tomo
-  use setup_att_log, only: setuplog
+  use setup_att_log, only: setuplog, write_log
   use argparse, only: argparse_tomo
 
   implicit none
