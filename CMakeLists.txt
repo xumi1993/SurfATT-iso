@@ -1,8 +1,8 @@
-cmake_minimum_required(VERSION 3.8)
+cmake_minimum_required(VERSION 3.10)
 
 # set the project name
 set(CMAKE_PROJECT_NAME "SurfATT")
-project(${CMAKE_PROJECT_NAME} VERSION 1.5.0 LANGUAGES Fortran CXX)
+project(${CMAKE_PROJECT_NAME} VERSION 1.5.1 LANGUAGES Fortran CXX)
 
 # set the version number and git commit hash
 execute_process(
@@ -11,8 +11,6 @@ execute_process(
     OUTPUT_VARIABLE GIT_COMMIT_HASH
     OUTPUT_STRIP_TRAILING_WHITESPACE
 )
-
-message(${GIT_COMMIT_HASH})
 
 configure_file(
   ${PROJECT_SOURCE_DIR}/include/version.h.in

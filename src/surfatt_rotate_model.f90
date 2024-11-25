@@ -22,6 +22,7 @@ program rotate_model
   implicit none
   
   character(len=MAX_STRING_LEN) :: input_file, output_file
+  character(len=MAX_NAME_LEN) :: keyname
   real(kind=dp) :: angle, center(2)
   real(kind=dp), dimension(:), allocatable :: lon, lat, dep, new_lat, new_lon
   real(kind=dp), dimension(:,:,:), allocatable :: vs3d
@@ -31,14 +32,14 @@ program rotate_model
   logical :: status_ok
   integer :: i, j, k, nx, ny, nz
 
-  call argparse_rotate_model(input_file, angle, center, output_file)
+  call argparse_rotate_model(input_file, angle, center, output_file, keyname)
 
   ! Read the input file
   call hf%open(input_file)
   call hf%get('/lon', lon)
   call hf%get('/lat', lat)
   call hf%get('/dep', dep)
-  call hf%get('/vs', vs3d)
+  call hf%get('/'//trim(keyname), vs3d)
   call hf%close()
   vs3d = transpose_3(vs3d)
 

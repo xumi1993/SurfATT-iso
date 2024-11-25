@@ -249,14 +249,15 @@ contains
 
   end subroutine argparse_rotate_topo
 
-  subroutine argparse_rotate_model(fname, angle, center, outfname)
+  subroutine argparse_rotate_model(fname, angle, center, outfname, keyname)
     use ieee_arithmetic
     character(len=MAX_STRING_LEN),dimension(:), allocatable :: args
     character(len=MAX_STRING_LEN) :: arg, value
     character(len=MAX_STRING_LEN),intent(out) :: fname, outfname
+    character(len=MAX_NAME_LEN),intent(out) :: keyname
     real(kind=dp), intent(out) :: angle, center(2)
     real(kind=dp) :: nan
-    integer :: i,nargs,m,ier,nopt=4
+    integer :: i,nargs,m,ier,nopt=5
 
     nargs = command_argument_count()
     allocate(args(nargs))
@@ -266,6 +267,7 @@ contains
     angle = 0.
     nan = ieee_value(nan, ieee_quiet_nan)
     center = [nan, nan]
+    keyname = 'vs'
     if (nargs==0 .or. any(args == '-h')) then
       write(*,*)'Usage: surfatt_rotate_model -i model_file -a angle -c clat/clon -o out_model_file' // &
                 ' [-h]'
@@ -282,6 +284,7 @@ contains
       write(*,*)' -a angle             Angle in degree to rotate model'
       write(*,*)' -c clat/clon         Center of rotation in latitude and longitude'
       write(*,*)' -h                   Print help message'
+      write(*,*)' -k keyname           Key name of the variable to rotate, defaults to "vs"'
     endif
     m = 0
     do i = 1, nargs
@@ -301,6 +304,9 @@ contains
       elseif (arg(1:2) == '-o') then
         m = m+1
         outfname = args(i+1)
+      elseif (arg(1:2) == '-k') then
+        m = m+1
+        keyname = args(i+1)
       endif
     enddo
     if (m<1) then
