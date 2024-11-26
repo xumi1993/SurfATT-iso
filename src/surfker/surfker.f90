@@ -2,11 +2,12 @@ module surfker
 
   use shared_par
   use RayleighWaveKernel
+  use LoveWaveKernel
   use utils
   ! use setup_att_log
   implicit none
   integer, parameter :: iflsph=1, mode=1
-    character(len=MAX_STRING_LEN) :: msg, thismodule='SURFKER'
+  ! character(len=MAX_STRING_LEN) :: msg, thismodule='SURFKER'
   ! integer, parameter :: dp = 8
 contains
 
@@ -89,7 +90,7 @@ contains
     allocate(rvp(mmax), rvs(mmax), rrho(mmax), rthk(mmax))
     call get_vprho(vsz, nz, vpz, rhoz)
     call refinegrid(vpz, vsz, rhoz, real(depz), nz, rvp, rvs, rrho, rthk)
-    if (iwave == 2 .and. igr == 0) then
+    if (iwave == RAYLEIGH .and. igr == PHASE_VEL) then
       call surfdisp96(rthk,rvp,rvs,rrho,mmax,iflsph,iwave,mode,igr,kmaxRc,&
                       tRc,cp)
       do i = 1, kmaxRc
@@ -102,7 +103,7 @@ contains
         sen_vpRc(i,1:nz) = dcdar(1:nz)
         sen_rhoRc(i,1:nz) = dcdrr(1:nz)
       enddo
-    elseif (iwave == 2 .and. igr == 1) then
+    elseif (iwave == RAYLEIGH .and. igr == GROUP_VEL) then
       block
         real(kind=dp), dimension(kmaxRc) :: t1, t2, cp, c1, c2, cg
         real(kind=dp), dimension(mmax) :: dudar, dudbr, dudhr, dudrr
@@ -131,8 +132,45 @@ contains
           sen_rhoRc(i,1:nz) = dudrr(1:nz)  
         enddo
       end block
+    elseif (iwave == LOVE .and. igr == PHASE_VEL) then
+      block
+        real(kind=dp), dimension(kmaxRc) :: cp, cg
+        real(kind=dp), dimension(mmax) :: dudbr, dudhr, dudrr
+        call surfdisp96(rthk,rvp,rvs,rrho,mmax,iflsph,iwave,mode,igr,kmaxRc,&
+                        tRc,cp)
+        do i = 1, kmaxRc
+          call slegn96(rthk,rvs,rrho,mmax,tRc(i),cp(i),cg(i),&
+                    ur,tr,dcdbr,dcdhr,dcdrr,iflsph)
+          sen_vpRc(i,1:nz) = 0._dp
+          sen_vsRc(i,1:nz) = dcdbr(1:nz)
+          sen_rhoRc(i,1:nz) = dcdrr(1:nz)
+        enddo
+      end block
+    elseif (iwave == LOVE .and. igr == GROUP_VEL) then
+      block
+        real(kind=dp), dimension(kmaxRc) :: t1, t2, cp, c1, c2, cg
+        real(kind=dp), dimension(mmax) :: dudbr, dudhr, dudrr
+        real(kind=dp) :: dt = 0.01
+        t1 = tRc * (1+0.5*dt)
+        t2 = tRc * (1-0.5*dt)
+        call surfdisp96(rthk,rvp,rvs,rrho,mmax,iflsph,iwave,mode,0,kmaxRc,&
+                        tRc,cp)
+        call surfdisp96(rthk,rvp,rvs,rrho,mmax,iflsph,iwave,mode,0,kmaxRc,&
+                        t1,c1)
+        call surfdisp96(rthk,rvp,rvs,rrho,mmax,iflsph,iwave,mode,0,kmaxRc,&
+                        t2,c2)
+        do i = 1, kmaxRc
+          call slegnpu(rthk,rvs,rrho,mmax,tRc(i),cp(i),cg(i),&
+                      ur,tr,t1(i),c1(i),t2(i),c2(i),&
+                      dcdbr,dcdhr,dcdrr,&
+                      dudbr,dudhr,dudrr,iflsph)
+          sen_vpRc(i,1:nz) = 0._dp
+          sen_vsRc(i,1:nz) = dudbr(1:nz)
+          sen_rhoRc(i,1:nz) = dudrr(1:nz)
+        enddo
+      end block
     else
-      stop 'kernel1D: Only rayleigh wave is supported for now.'
+      stop 'kernel1D: Unspupported wave or velocity type'
     endif
 
   end subroutine depthkernel1d

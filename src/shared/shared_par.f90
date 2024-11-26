@@ -4,6 +4,8 @@ module constants
 
   ! if NUMBER_OF_SIMULTANEOUS_RUNS > 1
   character(len=MAX_STRING_LEN) :: OUTPUT_FILES = 'OUTPUT_FILES'
+  integer, parameter :: GROUP_VEL = 1, PHASE_VEL = 0
+  integer, parameter :: RAYLEIGH = 2, LOVE = 1
   
   ! we put a default value here
   real(kind=dp), parameter :: pi = 3.14159265359

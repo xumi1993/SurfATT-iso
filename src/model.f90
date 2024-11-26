@@ -234,7 +234,6 @@ module model
       vsinv = vsinv * (1-update_total)
     enddo
     niter = iter
-    
   end subroutine inv1d
 
   subroutine add_pert(this,nx,ny,nz,pert_vel,hmarg,anom_size)
