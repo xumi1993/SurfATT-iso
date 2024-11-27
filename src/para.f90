@@ -107,7 +107,7 @@ module para
         ! if (associated(io_err)) call exit_mpi(myrank, trim(io_err%message))
         this%data%iwave = data_sec%get_integer('iwave', error=io_err)
         if (associated(io_err)) call exit_mpi(myrank, trim(io_err%message))
-        if (this%data%iwave == 2) then
+        if (this%data%iwave == RAYLEIGH) then
           this%data%wave_name = 'rayleigh'
         else
           this%data%wave_name = 'love'

@@ -10,3 +10,5 @@
   integer, parameter :: MAX_NAME_LEN = 30
 
   integer, parameter :: IIN = 40, IOUT = 41
+
+  integer, parameter :: max_iter_1d = 40
