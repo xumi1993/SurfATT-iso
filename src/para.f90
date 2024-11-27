@@ -191,6 +191,7 @@ module para
         this%inversion%max_sub_niter = inversion%get_integer('max_sub_niter',default=10,error=io_err)
         this%inversion%kdensity_coe = inversion%get_real('kdensity_coe',default=0.0,error=io_err)
         this%inversion%sigma_2d = inversion%get_real('sigma_2d',default=0.0,error=io_err)
+        m_store = inversion%get_integer('lbfgs_model_store',default=5,error=io_err)
 
       end select
       call root%finalize()
@@ -236,6 +237,7 @@ module para
     call bcast_all(this%inversion%max_sub_niter)
     call bcast_all(this%inversion%optim_method)
     call bcast_all(this%inversion%sigma_2d)
+    call bcast_all(m_store)
     
     call synchronize_all()
 

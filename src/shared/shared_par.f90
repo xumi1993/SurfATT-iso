@@ -20,7 +20,6 @@ module constants
 
 
   real(kind=dp), parameter :: precond_thres = 1.0d-4
-  integer, parameter :: m_store = 5
   integer, parameter :: iter_start = 0
 
 end module constants
@@ -37,6 +36,7 @@ module shared_par
   real(kind=dp), dimension(:,:,:), allocatable :: gradient_s, direction
   character(len=MAX_STRING_LEN) :: log_fname, model_fname
   character(len=MAX_STRING_LEN) :: VERSION
+  integer :: m_store = 5
 
 contains
   subroutine get_version()
