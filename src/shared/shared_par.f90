@@ -37,6 +37,8 @@ module shared_par
   character(len=MAX_STRING_LEN) :: log_fname, model_fname
   character(len=MAX_STRING_LEN) :: VERSION
   integer :: m_store = 5
+  integer :: batch_size
+  real(kind=dp) :: batch_ratio = 0.3
 
 contains
   subroutine get_version()

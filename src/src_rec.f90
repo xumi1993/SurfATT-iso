@@ -37,14 +37,15 @@ module src_rec
     integer                                                :: npath, nfield, nsrc, istart, iend
     character(len=MAX_NAME_LEN), dimension(:), pointer     :: evtname, staname, header
     real(kind=dp), dimension(:), pointer                   :: periods, meanvel, tt_fwd
-    integer, dimension(:,:), pointer                       :: isrcs
+    integer, dimension(:), pointer                         :: ntr_per_period
+    integer, dimension(:,:), pointer                       :: isrcs, period_evt_map
     integer                                                :: nperiod
     type(stations)                                         :: stations
     character(len=MAX_STRING_LEN)                          :: module = 'SRCREC', message
     contains
     procedure :: read => read_src_rec_file, to_csv             
     procedure :: get_sta, get_periods, get_mean_vel, get_evt_gather,get_periods_by_src,add_random_noise,&
-                 scatter_src_gather                                 
+                 scatter_src_gather, get_evt_num_per_period, get_mini_batch, get_full_batch
   end type SrcRec
 
   type(srcrec), target, public                             :: src_rec_global_ph,src_rec_global_gr
@@ -53,7 +54,8 @@ module src_rec
              win_evla, win_evlo, win_periods_all, win_tt, &
              win_staname, win_evtname, win_periods_sr, win_meanvel,&
              win_sta_name, win_sta_la, win_sta_lo, win_glob_sta,&
-             win_glob_stla, win_glob_stlo, win_isrcs_sr
+             win_glob_stla, win_glob_stlo, win_isrcs_sr, win_periods_nevt,&
+             win_periods_nevt_map
 
 contains
   subroutine read_src_rec_file(this, type)
@@ -118,12 +120,15 @@ contains
 
     ! get periods array
     call this%get_periods()
-
+  
     ! get mean velocity
     call this%get_mean_vel()
 
     ! get station list
     call this%get_sta()
+
+    ! get number of events per period
+    call this%get_evt_num_per_period()
 
   end subroutine
 
@@ -159,6 +164,35 @@ contains
     call synchronize_all()
 
   end subroutine get_periods
+
+  subroutine get_evt_num_per_period(this)
+    class(SrcRec), intent(inout) :: this
+    integer :: i, j, k, n, ns
+
+    call prepare_shm_array_i_1d(this%ntr_per_period, this%nperiod, win_periods_nevt)
+    call prepare_shm_array_i_2d(this%period_evt_map, this%nperiod, this%stations%nsta, win_periods_nevt_map)
+
+    if (myrank == 0) then
+      this%ntr_per_period = 0
+      do i = 1, this%npath
+        do j = 1, this%nperiod
+          ns = 1
+          if (this%periods_all(i) == this%periods(j)) then
+            this%ntr_per_period(j) = this%ntr_per_period(j) + 1
+            do k = 1, this%stations%nsta
+              if (this%evtname(i)==this%stations%staname(k)) then
+                this%period_evt_map(j,ns) = k
+                ns = ns + 1
+              endif
+            enddo
+          endif
+        enddo
+      enddo
+    endif
+    call sync_from_main_rank(this%nevt_per_period, this%nperiod)
+    call sync_from_main_rank(this%period_evt_map, this%nperiod, this%stations%nsta)
+    
+  end subroutine 
 
   subroutine get_periods_by_src(this, src_name, ipx, n)
     class(SrcRec), intent(inout) :: this
@@ -335,38 +369,80 @@ contains
     stax = this%stlo(i)
   end subroutine get_sta_pos
 
-  subroutine scatter_src_gather(this)
+  subroutine scatter_src_gather(this, force_full_batch)
     class(srcrec), intent(inout) :: this
+    logical, intent(in), optional :: force_full_batch
     integer, dimension(:,:), allocatable :: isrcs
     integer, dimension(:), allocatable :: iperiods
     integer :: i, j, np
 
+    if (batch_ratio >= 1 .or. force_full_batch) then
+      call this%get_full_batch(isrcs, this%nsrc)
+    else
+      call this%get_mini_batch(isrcs, this%nsrc)
+    endif
     if (myrank == 0) then
-      iperiods = zeros(this%nperiod)
-      this%nsrc = 0
-      isrcs = zeros(this%npath, 2)
-      do j = 1, this%stations%nsta
-        if (any(this%evtname==this%stations%staname(j))) then  
-          call this%get_periods_by_src(this%stations%staname(j), iperiods, np)
-          do i = 1, np
-            this%nsrc = this%nsrc+1        
-            isrcs(this%nsrc, 1) = iperiods(i)
-            isrcs(this%nsrc, 2) = j
-          enddo
-        endif
-      enddo
       write(this%message,'(a,i0," ",a,i0,a)') 'Scatter ',this%nsrc,&
             ' events to ',mysize," processors"
       call write_log(this%message,1,this%module)
     endif
     call synchronize_all()
-    call bcast_all(this%nsrc)
+
+    call free_shm(win_isrcs_sr)
     call prepare_shm_array_i_2d(this%isrcs, this%nsrc, 2, win_isrcs_sr)
     if (myrank == 0) this%isrcs(1:this%nsrc, :) = isrcs(1:this%nsrc, :)
     call synchronize_all()
     call sync_from_main_rank(this%isrcs, this%nsrc, 2)
     call scatter_all_i(this%nsrc,mysize,myrank,this%istart,this%iend)
   end subroutine scatter_src_gather
+
+  subroutine get_mini_batch(this, isrcs, ns)
+    class(SrcRec), intent(inout) :: this
+    integer :: i, bn, j, ns
+    integer, dimension(:), allocatable :: idx
+    integer, dimension(:, :), allocatable :: isrcs
+
+    if (myrank == 0) then
+      isrcs = zeros(this%npath, 2)
+      ns = 1
+      do i = 1, this%nperiod
+        bn = int(this%nevt_per_period(i)*batch_ratio)
+        if (bn == 0) bn = 1
+        idx = fisher_yates(this%nevt_per_period(i), bn)
+        print *, 'period=', this%periods(i), this%nevt_per_period(i), 'bn=', bn
+        print *, 'idx: ', idx
+        do j = 1, bn
+          isrcs(ns, 1) = i
+          isrcs(ns, 2) = this%period_evt_map(i, idx(j))
+          ns = ns + 1
+        enddo
+      enddo
+    endif
+    call synchronize_all()
+    call bcast_all(ns)
+
+  end subroutine
+
+  subroutine get_full_batch(this, isrcs, ns)
+    class(SrcRec), intent(inout) :: this
+    integer :: i, j, ns
+    integer, dimension(:, :), allocatable :: isrcs
+
+    if (myrank == 0) then
+      isrcs = zeros(this%npath, 2)
+      ns = 1
+      do i = 1, this%nperiod
+        do j = 1, this%nevt_per_period(i)
+          isrcs(ns, 1) = i
+          isrcs(ns, 2) = this%period_evt_map(i, j)
+          ns = ns + 1
+        enddo
+      enddo
+    endif
+    call synchronize_all()
+    call bcast_all(ns)
+  end subroutine
+
 
   subroutine add_random_noise(this, max_noise)
     class(SrcRec), intent(inout) :: this

@@ -66,7 +66,7 @@ contains
       this%ag => ag_gr
       this%sr => sr_gr
     endif
-    call this%sr%scatter_src_gather()
+    if (is_fwd) call this%sr%scatter_src_gather(.true.)
     call this%allocate_shm_arrays()
   end subroutine att_acqui_init
 

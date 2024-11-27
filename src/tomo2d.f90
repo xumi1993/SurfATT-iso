@@ -42,7 +42,7 @@ contains
       if (.not. ap%data%vel_type(itype)) cycle
       call select_type()
       call acqui%init(itype)
-      call acqui%sr%scatter_src_gather()
+      call acqui%sr%scatter_src_gather(.true.)
     enddo
     if (myrank == 0) then
       if (ap%inversion%sigma_2d == 0.0_dp) then

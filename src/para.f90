@@ -192,6 +192,7 @@ module para
         this%inversion%kdensity_coe = inversion%get_real('kdensity_coe',default=0.0,error=io_err)
         this%inversion%sigma_2d = inversion%get_real('sigma_2d',default=0.0,error=io_err)
         m_store = inversion%get_integer('lbfgs_model_store',default=5,error=io_err)
+        batch_ratio = inversion%get_real('batch_ratio',default=1.0,error=io_err)
 
       end select
       call root%finalize()
@@ -238,6 +239,7 @@ module para
     call bcast_all(this%inversion%optim_method)
     call bcast_all(this%inversion%sigma_2d)
     call bcast_all(m_store)
+    call bcast_all(batch_ratio)
     
     call synchronize_all()
 

@@ -1308,4 +1308,24 @@ end function
     endif
 
   end subroutine locate_bissection
+
+  function fisher_yates(m, n) result(nums)
+    integer(kind = IPRE), intent(in) :: m, n
+    integer(kind = IPRE), dimension(:), allocatable :: nums, numbers
+    integer(kind = IPRE) :: i, j, k, tmp
+    real :: rand_val
+
+    numbers = [ (i, i = 1, m) ]
+    nums = zeros(n)
+    call random_seed()
+    do i = m, 2, -1
+      call random_number(rand_val)
+      k = int(rand_val * real(i)) + 1
+      tmp = numbers(i)
+      numbers(i) = numbers(k)
+      numbers(k) = tmp
+    end do
+    nums = numbers(1:n)
+    deallocate(numbers)
+  end function
 end module

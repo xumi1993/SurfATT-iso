@@ -137,6 +137,7 @@ contains
       do itype = 1, 2
         if (.not. ap%data%vel_type(itype)) cycle
         call select_type()
+        if (batch_ratio < 1.0 .or. iter == 1) call aq%sr%scatter_src_gather(.false.)
         call aq%prepare_inv()
         ! compute eikonal kernel
         call this%eikokernel()

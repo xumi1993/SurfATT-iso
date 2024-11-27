@@ -2074,6 +2074,27 @@ subroutine bcast_all_dp_3(buffer, countval)
 
   end subroutine prepare_shm_array_dp_2d
 
+  subroutine prepare_shm_array_i_1d(buffer, nx, win)
+    USE, INTRINSIC :: ISO_C_BINDING
+    integer, dimension(:), pointer :: buffer
+    integer :: ierr,nx,n
+    integer(kind=MPI_ADDRESS_KIND) :: size
+    integer :: win, int_size
+    type(C_PTR) :: c_window_ptr
+    
+    n = nx
+    if(local_rank /= 0) n = 0
+    CALL MPI_Type_size(MPI_INTEGER, int_size, ierr)
+    size = n * int_size
+    call MPI_Win_allocate_shared(size, int_size, MPI_INFO_NULL, MPI_COMM_WORLD, c_window_ptr, win, ierr)
+    if (local_rank /= 0) then
+      call MPI_Win_shared_query(win, 0, size, int_size, c_window_ptr, ierr)
+    endif
+    CALL C_F_POINTER(c_window_ptr, buffer, SHAPE = [nx])
+    call MPI_Win_fence(0, win, ierr)
+
+  end subroutine prepare_shm_array_i_1d
+
   subroutine prepare_shm_array_i_2d(buffer, nx, ny, win)
     USE, INTRINSIC :: ISO_C_BINDING
     integer, dimension(:,:), pointer :: buffer
@@ -2157,5 +2178,11 @@ subroutine bcast_all_dp_3(buffer, countval)
     call MPI_Win_fence(0, win, ierr)
 
   end subroutine prepare_shm_array_ch_1d
+
+  subroutine free_shm(win)
+    integer :: win, ierr
+    call MPI_Win_fence(0, win, ierr)
+    call MPI_Win_free(win, ierr)
+  end subroutine free_shm
 
 end module my_mpi
