@@ -832,6 +832,23 @@ end function
     return
   end function transpose_3
 
+  pure function transpose_4(x) result(y)
+    real(kind = DPRE), dimension(:,:,:,:), intent(in) :: x
+    real(kind = DPRE), dimension(size(x,4), size(x,3), size(x,2), size(x,1)) :: y
+    integer(kind = IPRE) :: i, j, k, l
+
+    do i = 1, size(x,1)
+      do j = 1, size(x,2)
+        do k = 1, size(x,3)
+          do l = 1, size(x,4)
+            y(l,k,j,i) = x(i,j,k,l)
+          enddo
+        end do
+      end do
+    end do
+    return
+  end function transpose_4
+
   pure subroutine meshgrid2_ij(ax, ay, x, y)
     real(kind = DPRE), dimension(:), intent(in) :: ax, ay
     real(kind = DPRE), dimension(:,:), allocatable, intent(out) :: x, y

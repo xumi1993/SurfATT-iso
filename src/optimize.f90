@@ -20,13 +20,13 @@ module optimize
 contains
   subroutine get_lbfgs_direction(iter, direction)
     integer, intent(in) :: iter
-    real(kind=dp), dimension(:,:,:), allocatable, intent(out) :: direction
-    real(kind=dp), dimension(:,:,:), allocatable :: gradient0,gradient1,model0,model1,&
+    real(kind=dp), dimension(:,:,:,:), allocatable, intent(out) :: direction
+    real(kind=dp), dimension(:,:,:,:), allocatable :: gradient0,gradient1,model0,model1,&
                                                     q_vector,r_vector
-    real(kind=dp), dimension(:,:,:,:), allocatable :: gradient_diff, model_diff
+    real(kind=dp), dimension(:,:,:,:,:), allocatable :: gradient_diff, model_diff
     real(kind=dp), dimension(:), allocatable :: p, a
     real(kind=dp) :: p_k_up_sum, p_k_down_sum, p_k, b
-    integer :: istore, i, dims(3), iter_store, nstore
+    integer :: istore, i, dims(4), iter_store, nstore
     integer, dimension(:), allocatable :: idx_iter
 
     iter_store = iter-m_store
@@ -35,8 +35,8 @@ contains
 
     call get_gradient(iter, q_vector)
     dims = shape(q_vector)
-    allocate(gradient_diff(nstore, dims(1), dims(2), dims(3)))
-    allocate(model_diff(nstore, dims(1), dims(2), dims(3)))
+    allocate(gradient_diff(nstore, nker, dims(1), dims(2), dims(3)))
+    allocate(model_diff(nstore, nker, dims(1), dims(2), dims(3)))
     idx_iter = zeros(nstore)
     p = zeros(nstore)
     a = zeros(nstore)
@@ -49,22 +49,22 @@ contains
       call get_model(istore, model0)
       call get_model(istore+1, model1)
 
-      model_diff(i,:,:,:) = model1 - model0
-      gradient_diff(i,:,:,:) = gradient1 - gradient0
+      model_diff(i,:,:,:,:) = model1 - model0
+      gradient_diff(i,:,:,:,:) = gradient1 - gradient0
 
-      p(i) = 1/sum(model_diff(i,:,:,:)*gradient_diff(i,:,:,:))
-      a(i) = sum(model_diff(i,:,:,:)*q_vector)*p(i)
-      q_vector = q_vector - a(i)*gradient_diff(i,:,:,:)
+      p(i) = 1/sum(model_diff(i,:,:,:,:)*gradient_diff(i,:,:,:,:))
+      a(i) = sum(model_diff(i,:,:,:,:)*q_vector)*p(i)
+      q_vector = q_vector - a(i)*gradient_diff(i,:,:,:,:)
     enddo
-    p_k_up_sum = sum(model_diff(1,:,:,:)*gradient_diff(1,:,:,:))
-    p_k_down_sum = sum(gradient_diff(1,:,:,:)*gradient_diff(1,:,:,:))
+    p_k_up_sum = sum(model_diff(1,:,:,:,:)*gradient_diff(1,:,:,:,:))
+    p_k_down_sum = sum(gradient_diff(1,:,:,:,:)*gradient_diff(1,:,:,:,:))
     p_k = p_k_up_sum/p_k_down_sum
     r_vector = p_k*q_vector
 
     do istore = iter_store,iter-1
       i = find_loc(idx_iter, istore)
-      b = sum(gradient_diff(i,:,:,:)*r_vector)*p(i)
-      r_vector = r_vector + model_diff(i,:,:,:)*(a(i)-b)
+      b = sum(gradient_diff(i,:,:,:,:)*r_vector)*p(i)
+      r_vector = r_vector + model_diff(i,:,:,:,:)*(a(i)-b)
     enddo
     direction = -1.0_dp * r_vector
 
@@ -73,8 +73,8 @@ contains
   subroutine get_cg_direction(iter, direction)
     ! get the conjugate gradient direction using Hager-Zhang formula
     integer, intent(in) :: iter
-    real(kind=dp), dimension(:,:,:), allocatable, intent(out) :: direction
-    real(kind=dp), dimension(:,:,:), allocatable :: gradient0,gradient1,direction0,grad_diff
+    real(kind=dp), dimension(:,:,:,:), allocatable, intent(out) :: direction
+    real(kind=dp), dimension(:,:,:,:), allocatable :: gradient0,gradient1,direction0,grad_diff
     real(kind=dp) :: beta
 
     call get_gradient(iter-1, gradient0)
@@ -90,33 +90,50 @@ contains
 
   subroutine get_model(iter, model)
     integer, intent(in) :: iter
-    real(kind=dp), dimension(:,:,:), allocatable, intent(out) :: model
+    real(kind=dp), dimension(:,:,:,:), allocatable, intent(out) :: model
+    real(kind=dp), dimension(:,:,:), allocatable :: tmp_model
     character(len=MAX_NAME_LEN) :: key_name
 
     write(key_name, '("/vs_",I3.3)') iter
-    call h5read(model_fname, key_name, model)
-    model = transpose_3(model)
+    call h5read(model_fname, key_name, tmp_model)
+    tmp_model = transpose_3(tmp_model)
+    model = zeros( nker,size(tmp_model, 1), size(tmp_model, 3), size(tmp_model, 3))
+    model(1,:,:,:) = tmp_model
+    if (ap%inversion%use_alpha_beta_rho) then
+      ! read vp model
+      deallocate(tmp_model)
+      write(key_name, '("/vp_",I3.3)') iter
+      call h5read(model_fname, key_name, tmp_model)
+      model(2,:,:,:) = tmp_model
+
+      ! read rho model
+      deallocate(tmp_model)
+      write(key_name, '("/rho_",I3.3)') iter
+      call h5read(model_fname, key_name, tmp_model)
+      model(3,:,:,:) = tmp_model
+    endif
+
   end subroutine get_model
 
   subroutine get_gradient(iter, gradient)
     integer, intent(in) :: iter
-    real(kind=dp), dimension(:,:,:), allocatable, intent(out) :: gradient
+    real(kind=dp), dimension(:,:,:,:), allocatable, intent(out) :: gradient
     character(len=MAX_NAME_LEN) :: key_name
 
     write(key_name, '("/gradient_",I3.3)') iter
     call h5read(model_fname, key_name, gradient)
-    gradient = transpose_3(gradient)
+    gradient = transpose_4(gradient)
 
   end subroutine get_gradient
 
   subroutine get_direction(iter, direction)
     integer, intent(in) :: iter
-    real(kind=dp), dimension(:,:,:), allocatable, intent(out) :: direction
+    real(kind=dp), dimension(:,:,:,:), allocatable, intent(out) :: direction
     character(len=MAX_NAME_LEN) :: key_name
 
     write(key_name, '("/direction_",I3.3)') iter
     call h5read(model_fname, key_name, direction)
-    direction = transpose_3(direction)
+    direction = transpose_4(direction)
 
   end subroutine
 end module optimize
