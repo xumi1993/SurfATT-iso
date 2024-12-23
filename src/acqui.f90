@@ -256,13 +256,13 @@ contains
     character(len=MAX_STRING_LEN) :: fname
 
     if (myrank == 0) then
-        do iker = 1, nker
-        nset = ap%inversion%ncomponents
-        nxinv = ap%inversion%n_inv_grid(1)
-        nyinv = ap%inversion%n_inv_grid(2)
-        nzinv = ap%inversion%n_inv_grid(3)
+      nset = ap%inversion%ncomponents
+      nxinv = ap%inversion%n_inv_grid(1)
+      nyinv = ap%inversion%n_inv_grid(2)
+      nzinv = ap%inversion%n_inv_grid(3)
+      call write_log('This is post processing for '//trim(this%gr_name)//' kernel...',1,this%module)
+      do iker = 1, nker
         ! initial inversion grid kernel
-        call write_log('This is post processing for '//trim(this%gr_name)//' kernel...',1,this%module)
         gk = zeros(nset*nxinv*nyinv*nzinv)
         ! gk_precond = zeros(nset*nxinv*nyinv*nzinv)
         update = zeros(am%n_xyz(1),am%n_xyz(2),am%n_xyz(3))
