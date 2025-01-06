@@ -8,6 +8,9 @@
 !                           (c) October 2023
 !   
 !     Changing History: Apl 2024, Initialize Codes
+!                       May 2024, Add L-BFGS and CG optimization
+!                       Jun 2024, Add Hager-Zhang formula for CG
+!                       Jan 2025, change dims for Alpha_beta_rho
 !
 !=====================================================================
 module optimize
@@ -35,8 +38,8 @@ contains
 
     call get_gradient(iter, q_vector)
     dims = shape(q_vector)
-    allocate(gradient_diff(nstore, nker, dims(1), dims(2), dims(3)))
-    allocate(model_diff(nstore, nker, dims(1), dims(2), dims(3)))
+    allocate(gradient_diff(nstore, nker, dims(2), dims(3), dims(4)))
+    allocate(model_diff(nstore, nker, dims(2), dims(3), dims(4)))
     idx_iter = zeros(nstore)
     p = zeros(nstore)
     a = zeros(nstore)
@@ -97,7 +100,7 @@ contains
     write(key_name, '("/vs_",I3.3)') iter
     call h5read(model_fname, key_name, tmp_model)
     tmp_model = transpose_3(tmp_model)
-    model = zeros( nker,size(tmp_model, 1), size(tmp_model, 3), size(tmp_model, 3))
+    model = zeros( nker,size(tmp_model, 1), size(tmp_model, 2), size(tmp_model, 3))
     model(1,:,:,:) = tmp_model
     if (ap%inversion%use_alpha_beta_rho) then
       ! read vp model

@@ -8,6 +8,7 @@
 !                           (c) October 2023
 !   
 !     Changing History: Oct 2023, Initialize Codes
+!                       Jan 2025, change dims for Alpha_beta_rho
 !
 !=====================================================================
 module tomo
@@ -84,6 +85,10 @@ contains
         call h%add('/lat', am%ygrids)
         call h%add('/dep', am%zgrids)
         call h%add('/vs_000', transpose_3(am%vs3d))
+        if (ap%inversion%use_alpha_beta_rho) then
+          call h%add('/vp_000', transpose_3(am%vp3d))
+          call h%add('/rho_000', transpose_3(am%rho3d))
+        endif
         call h%close(finalize=.true.)
       endif
     endif
@@ -229,7 +234,6 @@ contains
         am%vp3d = am%vp3d * (1 + gradient_s(2,:,:,:))
         am%rho3d = am%rho3d * (1 + gradient_s(3,:,:,:))
       endif
-      !!!!!!!!!!!!!!!!!!!!!!!
       call write_tmp_model()
     endif
     call synchronize_all()
@@ -305,7 +309,6 @@ contains
         am%vp3d_opt = am%vp3d * (1 + gradient_ls(2,:,:,:))
         am%rho3d_opt = am%rho3d * (1 + gradient_ls(3,:,:,:))
       else
-        gradient_ls = updatemax * direction / max_gk
         am%vs3d_opt = am%vs3d * (1 + gradient_ls(1,:,:,:))
         am%vp3d_opt = empirical_vp(am%vs3d_opt)
         am%rho3d_opt = empirical_rho(am%vp3d_opt)

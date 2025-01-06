@@ -28,6 +28,9 @@ topo:
   wavelen_factor: 2.5
 
 inversion:
+  # ------- Inversion parameters --------
+  use_alpha_beta_rho: false
+  rho_scaling: false
   # ------- Initial model --------
   init_model_type: 0 # 0: increase from v0 to v1; 1: 1D inversion for average tt; 2: use a 3D vs model
   vel_range: [1.8, 4.2]

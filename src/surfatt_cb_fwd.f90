@@ -28,12 +28,13 @@ program surfatt_cb_fwd
   character(len=MAX_STRING_LEN) :: fname
   integer, dimension(3) :: ncb
   real(kind=dp) :: pert, hmarg, anom_size, max_noise
+  logical :: only_vs
 
   ! initialize MPI
   call init_mpi()
 
   ! read command line arguments
-  call argparse_cb_fwd(fname, ncb, pert, hmarg, anom_size, max_noise)
+  call argparse_cb_fwd(fname, ncb, pert, hmarg, anom_size, max_noise, only_vs)
 
   ! read parameter file
   call ap%read(fname)
@@ -54,7 +55,7 @@ program surfatt_cb_fwd
 
   ! add perturbations
   call am%add_pert(ncb(1),ncb(2),ncb(3), pert_vel=pert,&
-                   hmarg=hmarg, anom_size=anom_size)
+                   hmarg=hmarg, anom_size=anom_size,only_vs=only_vs)
 
   ! initialize grid
   if (ap%data%vel_type(1)) then
