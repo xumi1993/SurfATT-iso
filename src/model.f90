@@ -324,6 +324,10 @@ module model
       call h%add('/lat',this%ygrids)
       call h%add('/dep',this%zgrids)
       call h%add('/vs',transpose_3(this%vs3d))
+      if (ap%inversion%use_alpha_beta_rho) then
+        call h%add('/vp',transpose_3(this%vp3d))
+        call h%add('/rho',transpose_3(this%rho3d))
+      endif
       call h%close()
     endif
     call synchronize_all()    
