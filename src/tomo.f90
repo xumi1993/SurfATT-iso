@@ -8,6 +8,7 @@
 !                           (c) October 2023
 !   
 !     Changing History: Oct 2023, Initialize Codes
+!                       Jan 2025, change dims for Alpha_beta_rho
 !
 !=====================================================================
 module tomo
@@ -84,6 +85,10 @@ contains
         call h%add('/lat', am%ygrids)
         call h%add('/dep', am%zgrids)
         call h%add('/vs_000', transpose_3(am%vs3d))
+        if (ap%inversion%use_alpha_beta_rho) then
+          call h%add('/vp_000', transpose_3(am%vp3d))
+          call h%add('/rho_000', transpose_3(am%rho3d))
+        endif
         call h%close(finalize=.true.)
       endif
     endif
@@ -220,9 +225,15 @@ contains
         call write_log(this%message, 1, this%module)
       endif
       gradient_s = -updatemax * gradient_s / max_gk
-      am%vs3d = am%vs3d * (1 + gradient_s)
-      am%vp3d = empirical_vp(am%vs3d)
-      am%rho3d = empirical_rho(am%vp3d)
+      if (ap%inversion%use_alpha_beta_rho) then
+        am%vs3d = am%vs3d * (1 + gradient_s(1,:,:,:))
+        am%vp3d = empirical_vp(am%vs3d)
+        am%rho3d = empirical_rho(am%vp3d)
+      else
+        am%vs3d = am%vs3d * (1 + gradient_s(1,:,:,:))
+        am%vp3d = am%vp3d * (1 + gradient_s(2,:,:,:))
+        am%rho3d = am%rho3d * (1 + gradient_s(3,:,:,:))
+      endif
       call write_tmp_model()
     endif
     call synchronize_all()
@@ -254,7 +265,7 @@ contains
       endif
       if (ap%output%verbose_level > 0) then
         write(secname,'(a,i3.3)') '/direction_',iter-1
-        call h5write(model_fname, secname, transpose_3(direction))
+        call h5write(model_fname, secname, transpose_4(direction))
       endif
     endif
     call synchronize_all()
@@ -288,14 +299,20 @@ contains
   subroutine prepare_fwd_linesearch()
     ! class(att_tomo), intent(inout) :: this
     real(kind=dp) :: max_gk
-    real(kind=dp), dimension(:,:,:), allocatable :: gradient_ls
+    real(kind=dp), dimension(:,:,:,:), allocatable :: gradient_ls
 
     if (myrank == 0) then
       max_gk = maxval(abs(direction))
       gradient_ls = updatemax * direction / max_gk
-      am%vs3d_opt = am%vs3d * (1 + gradient_ls)
-      am%vp3d_opt = empirical_vp(am%vs3d_opt)
-      am%rho3d_opt = empirical_rho(am%vp3d_opt)    
+      if (ap%inversion%use_alpha_beta_rho) then
+        am%vs3d_opt = am%vs3d * (1 + gradient_ls(1,:,:,:))
+        am%vp3d_opt = am%vp3d * (1 + gradient_ls(2,:,:,:))
+        am%rho3d_opt = am%rho3d * (1 + gradient_ls(3,:,:,:))
+      else
+        am%vs3d_opt = am%vs3d * (1 + gradient_ls(1,:,:,:))
+        am%vp3d_opt = empirical_vp(am%vs3d_opt)
+        am%rho3d_opt = empirical_rho(am%vp3d_opt)
+      endif
     endif
     call synchronize_all()
     call sync_from_main_rank(am%vs3d_opt, am%n_xyz(1), am%n_xyz(2), am%n_xyz(3))
@@ -331,6 +348,12 @@ contains
     if (ap%output%verbose_level > 0) then
       write(secname,'(a,i3.3)') '/vs_',iter
       call h5write(model_fname, secname, transpose_3(am%vs3d))
+      if (ap%inversion%use_alpha_beta_rho) then
+        write(secname,'(a,i3.3)') '/vp_',iter
+        call h5write(model_fname, secname, transpose_3(am%vp3d))
+        write(secname,'(a,i3.3)') '/rho_',iter
+        call h5write(model_fname, secname, transpose_3(am%rho3d))
+      endif
     endif
 
   end subroutine write_tmp_model
@@ -340,12 +363,12 @@ contains
 
     if (ap%output%verbose_level > 0) then
       write(secname,'(a,i3.3)') '/gradient_',iter-1  
-      call h5write(model_fname, secname, transpose_3(gradient_s))
+      call h5write(model_fname, secname, transpose_4(gradient_s))
       do itype = 1, 2
         if (.not. ap%data%vel_type(itype)) cycle
         call select_type()
         write(secname,'(a,a,"_",i3.3)') '/kdensity_',trim(ap%data%gr_name(itype)),iter-1
-        call h5write(model_fname, secname, transpose_3(aq%ker_density))
+        call h5write(model_fname, secname, transpose_4(aq%ker_density))
       enddo
     endif
 
@@ -385,7 +408,7 @@ contains
     class(att_tomo), intent(inout) :: this
   
     if (myrank == 0) then
-      if (.not. this%is_fwd) gradient_s = zeros(am%n_xyz(1),am%n_xyz(2),am%n_xyz(3))
+      if (.not. this%is_fwd) gradient_s = zeros(nker, am%n_xyz(1),am%n_xyz(2),am%n_xyz(3))
       am%vs3d_opt = am%vs3d
       am%vp3d_opt = am%vp3d
       am%rho3d_opt = am%rho3d

@@ -32,7 +32,7 @@ module acqui
     real(kind=dp), dimension(:,:,:), pointer               :: adj_s, adj_density
     real(kind=dp), dimension(:,:,:), allocatable           :: adj_s_local, adj_density_local
     real(kind=dp), dimension(:,:,:,:), pointer             :: sen_vsRc, sen_vpRc, sen_rhoRc
-    real(kind=dp), dimension(:,:,:), pointer               :: ker_beta, ker_density
+    real(kind=dp), dimension(:,:,:,:), pointer             :: ker, ker_density
     real(kind=dp)                                          :: chi0
     contains
     procedure :: init => att_acqui_init, post_proc => post_processing_for_kernel
@@ -43,7 +43,7 @@ module acqui
   type(att_acqui), target, public                          :: att_acqui_global_ph, att_acqui_global_gr
   integer :: win_adj_s,win_adj_density,win_isrcs,&
             win_sen_vsRc, win_sen_vpRc, win_sen_rhoRc,&
-            win_ker_beta, win_ker_density
+            win_ker,win_ker_density
 contains
   subroutine att_acqui_init(this, itype, is_fwd)
     class(att_acqui), intent(inout) :: this
@@ -82,7 +82,7 @@ contains
       this%sen_vsRc = 0._dp
       this%sen_vpRc = 0._dp
       this%sen_rhoRc = 0._dp
-      this%ker_beta = 0._dp
+      this%ker = 0._dp
       this%ker_density = 0._dp
     endif
     call synchronize_all()
@@ -206,23 +206,42 @@ contains
     call sum_all(this%adj_density_local, this%adj_density, this%sr%nperiod, am%n_xyz(1), am%n_xyz(2))
     call write_log('Combining eikonal and surface wave kernels...',1,this%module)
     if (myrank == 0) then
-      do ip = 1, this%sr%nperiod
-        do i = 1, am%n_xyz(3)
-          this%ker_beta(:,:,i) = this%ker_beta(:,:,i) -this%adj_s(ip,:,:) * this%sen_vsRc(ip,:,:,i) &
-                               - this%adj_s(ip,:,:) * this%sen_vpRc(ip,:,:,i) * dalpha_dbeta(am%vs3d_opt(:,:,i)) &
-                               - this%adj_s(ip,:,:) * this%sen_rhoRc(ip,:,:,i) * &
-                                 drho_dalpha(am%vp3d_opt(:,:,i)) * dalpha_dbeta(am%vs3d_opt(:,:,i))
-          this%ker_density(:,:,i) = this%ker_density(:,:,i) - this%adj_density(ip,:,:) * this%sen_vsRc(ip,:,:,i) &
-                                  - this%adj_density(ip,:,:) * this%sen_vpRc(ip,:,:,i) * dalpha_dbeta(am%vs3d_opt(:,:,i)) &
-                                  - this%adj_density(ip,:,:) * this%sen_rhoRc(ip,:,:,i) * &
-                                    drho_dalpha(am%vp3d_opt(:,:,i)) * dalpha_dbeta(am%vs3d_opt(:,:,i))
+      if (ap%inversion%use_alpha_beta_rho) then
+        do ip = 1, this%sr%nperiod
+          do i = 1, am%n_xyz(3)
+            this%ker(1,:,:,i) = this%ker(1,:,:,i) - this%adj_s(ip,:,:) * this%sen_vsRc(ip,:,:,i)
+            this%ker_density(1,:,:,i) = this%ker_density(1,:,:,i) - this%adj_density(ip,:,:) * this%sen_vsRc(ip,:,:,i)
+            this%ker(2,:,:,i) = this%ker(2,:,:,i) - this%adj_s(ip,:,:) * this%sen_vpRc(ip,:,:,i)
+            this%ker_density(2,:,:,i) = this%ker_density(1,:,:,i) - this%adj_density(ip,:,:) * this%sen_vpRc(ip,:,:,i)
+            if (.not. ap%inversion%rho_scaling) then
+              this%ker(3,:,:,i) = this%ker(3,:,:,i) - this%adj_s(ip,:,:) * this%sen_rhoRc(ip,:,:,i)
+              this%ker_density(3,:,:,i) = this%ker_density(3,:,:,i) - this%adj_density(ip,:,:) * this%sen_rhoRc(ip,:,:,i)
+            endif
+          enddo
         enddo
-      enddo
-      this%ker_beta = this%ker_beta / this%chi0
+        if (ap%inversion%rho_scaling) then
+          this%ker(3,:,:,:) = RHO_SCALING *this%ker(1,:,:,:)
+          this%ker_density(3,:,:,:) = this%ker_density(1,:,:,:)
+        endif
+      else
+        do ip = 1, this%sr%nperiod
+          do i = 1, am%n_xyz(3)
+            this%ker(1,:,:,i) = this%ker(1,:,:,i) -this%adj_s(ip,:,:) * this%sen_vsRc(ip,:,:,i) &
+                                - this%adj_s(ip,:,:) * this%sen_vpRc(ip,:,:,i) * dalpha_dbeta(am%vs3d_opt(:,:,i)) &
+                                - this%adj_s(ip,:,:) * this%sen_rhoRc(ip,:,:,i) * &
+                                  drho_dalpha(am%vp3d_opt(:,:,i)) * dalpha_dbeta(am%vs3d_opt(:,:,i))
+            this%ker_density(1,:,:,i) = this%ker_density(1,:,:,i) - this%adj_density(ip,:,:) * this%sen_vsRc(ip,:,:,i) &
+                                    - this%adj_density(ip,:,:) * this%sen_vpRc(ip,:,:,i) * dalpha_dbeta(am%vs3d_opt(:,:,i)) &
+                                    - this%adj_density(ip,:,:) * this%sen_rhoRc(ip,:,:,i) * &
+                                      drho_dalpha(am%vp3d_opt(:,:,i)) * dalpha_dbeta(am%vs3d_opt(:,:,i))
+          enddo
+        enddo
+      endif
+      ! this%ker_beta = this%ker_beta / this%chi0
     endif
     call synchronize_all()
-    call sync_from_main_rank(this%ker_beta, am%n_xyz(1), am%n_xyz(2), am%n_xyz(3))
-    call sync_from_main_rank(this%ker_density, am%n_xyz(1), am%n_xyz(2), am%n_xyz(3))
+    call sync_from_main_rank(this%ker, nker, am%n_xyz(1), am%n_xyz(2), am%n_xyz(3))
+    call sync_from_main_rank(this%ker_density, nker, am%n_xyz(1), am%n_xyz(2), am%n_xyz(3))
   end subroutine combine_kernels
 
   subroutine post_processing_for_kernel(this)
@@ -230,10 +249,10 @@ contains
     !! FILEPATH: /Users/xumijian/Codes/SurfATT/src/tomo.f90
     !! @param[inout] this an object of type att_acqui
     class(att_acqui), intent(inout) :: this
-    integer :: nxinv,nyinv,nzinv,nset
+    integer :: nxinv,nyinv,nzinv,nset,iker
     real(kind=dp) :: step, gkmax
     real(kind=dp), dimension(:), allocatable :: gk,gk_precond
-    real(kind=dp), dimension(:,:,:), allocatable :: update, precond
+    real(kind=dp), dimension(:,:,:), allocatable :: update, precond, this_ker
     character(len=MAX_STRING_LEN) :: fname
 
     if (myrank == 0) then
@@ -241,43 +260,43 @@ contains
       nxinv = ap%inversion%n_inv_grid(1)
       nyinv = ap%inversion%n_inv_grid(2)
       nzinv = ap%inversion%n_inv_grid(3)
-      ! initial inversion grid kernel
       call write_log('This is post processing for '//trim(this%gr_name)//' kernel...',1,this%module)
-      gk = zeros(nset*nxinv*nyinv*nzinv)
-      ! gk_precond = zeros(nset*nxinv*nyinv*nzinv)
-      update = zeros(am%n_xyz(1),am%n_xyz(2),am%n_xyz(3))
-      ! to inversion grids
-      if (ap%inversion%kdensity_coe > 0) then
-        call this%regularize_ker_density(precond)
-        this%ker_beta = this%ker_beta*precond
-      endif
-      call inv_grid_iso(am%xinv,am%yinv,am%zinv, nxinv, nyinv, nzinv,&
-                        nset,this%ker_beta,am%n_xyz(1),am%n_xyz(2),am%n_xyz(3),&
-                        gk,am%xgrids,am%ygrids,am%zgrids)
-      ! call inv_grid_iso(am%xinv,am%yinv,am%zinv, nxinv, nyinv, nzinv,&
-      !                   nset,precond,am%n_xyz(1),am%n_xyz(2),am%n_xyz(3),&
-      !                   gk_precond,am%xgrids,am%ygrids,am%zgrids)
-      call inv2fwd_iso(am%xinv,am%yinv,am%zinv,nxinv,nyinv,nzinv,&
-                       ap%inversion%ncomponents,am%n_xyz(1),am%n_xyz(2),am%n_xyz(3), &
-                       gk,am%xgrids,am%ygrids,am%zgrids,update)
-      update = update / nset
-      gradient_s = gradient_s + update*ap%data%weights(this%itype)
+      do iker = 1, nker
+        ! initial inversion grid kernel
+        gk = zeros(nset*nxinv*nyinv*nzinv)
+        ! gk_precond = zeros(nset*nxinv*nyinv*nzinv)
+        update = zeros(am%n_xyz(1),am%n_xyz(2),am%n_xyz(3))
+        ! to inversion grids
+        if (ap%inversion%kdensity_coe > 0) then
+          call this%regularize_ker_density(iker, precond)
+          this%ker(iker,:,:,:) = this%ker(iker,:,:,:)*precond
+        endif
+        call inv_grid_iso(am%xinv,am%yinv,am%zinv, nxinv, nyinv, nzinv,&
+                          nset,this%ker(iker,:,:,:),am%n_xyz(1),am%n_xyz(2),am%n_xyz(3),&
+                          gk,am%xgrids,am%ygrids,am%zgrids)
+        call inv2fwd_iso(am%xinv,am%yinv,am%zinv,nxinv,nyinv,nzinv,&
+                        ap%inversion%ncomponents,am%n_xyz(1),am%n_xyz(2),am%n_xyz(3), &
+                        gk,am%xgrids,am%ygrids,am%zgrids,update)
+        update = update / nset / this%chi0
+        gradient_s(iker,:,:,:) = gradient_s(iker,:,:,:) + update*ap%data%weights(this%itype)
+      enddo
     endif
     call synchronize_all()
 
   end subroutine post_processing_for_kernel
 
-  subroutine regularize_ker_density(this, precond)
+  subroutine regularize_ker_density(this, kernel_id, precond)
     !> Regularize the kernel density.
     !! Inputs:
     !!   this: an object of type att_acqui
     !! Outputs:
     !!   precond: a 3D array of real numbers representing the preconditioned kernel density
     class(att_acqui), intent(inout) :: this
+    integer :: kernel_id
     real(kind=dp), dimension(:,:,:), allocatable, intent(out) :: precond
 
     precond = zeros(am%n_xyz(1), am%n_xyz(2), am%n_xyz(3))
-    precond = abs(this%ker_density)/maxval(abs(this%ker_density))
+    precond = abs(this%ker_density(kernel_id,:,:,:))/maxval(abs(this%ker_density(kernel_id,:,:,:)))
     where(precond<precond_thres)
       precond = 0
     elsewhere
@@ -307,8 +326,8 @@ contains
       call prepare_shm_array_dp_4d(this%sen_vsRc, this%sr%nperiod, am%n_xyz(1), am%n_xyz(2), am%n_xyz(3), win_sen_vsRc)
       call prepare_shm_array_dp_4d(this%sen_vpRc, this%sr%nperiod, am%n_xyz(1), am%n_xyz(2), am%n_xyz(3), win_sen_vpRc)
       call prepare_shm_array_dp_4d(this%sen_rhoRc, this%sr%nperiod, am%n_xyz(1), am%n_xyz(2), am%n_xyz(3), win_sen_rhoRc)
-      call prepare_shm_array_dp_3d(this%ker_beta, am%n_xyz(1), am%n_xyz(2), am%n_xyz(3), win_ker_beta)
-      call prepare_shm_array_dp_3d(this%ker_density, am%n_xyz(1), am%n_xyz(2), am%n_xyz(3), win_ker_density)
+      call prepare_shm_array_dp_4d(this%ker, nker, am%n_xyz(1), am%n_xyz(2), am%n_xyz(3), win_ker)
+      call prepare_shm_array_dp_4d(this%ker_density, nker, am%n_xyz(1), am%n_xyz(2), am%n_xyz(3), win_ker_density)
     endif
     call synchronize_all()
   end subroutine allocate_shm_arrays
