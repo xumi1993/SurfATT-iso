@@ -37,6 +37,7 @@ module model
     real(kind=dp), dimension(:,:,:), pointer               :: vs3d_opt, vp3d_opt, rho3d_opt
     integer, dimension(:,:), allocatable                   :: igrid
     character(MAX_NAME_LEN), private                       :: module='MODEL'
+    type(hdf5_file)                                        :: modfp
     ! integer                                                :: grid_istart, grid_iend
     ! integer, dimension(:), allocatable, public             :: grid_local_index
     contains
@@ -187,7 +188,7 @@ module model
     misfits = zeros(max_iter_1d)
     step_length = ap%inversion%step_length
     sigma = 0.68*this%zgrids(this%n_xyz(3))/ap%inversion%n_inv_grid(3)
-    call write_log('Do 1D inverison using averaged surface wave data',1,this%module)
+    call write_log('Do 1D inversion using averaged surface wave data',1,this%module)
     do iter = 1, max_iter_1d
       update_total = 0.
       do itype = 1, 2

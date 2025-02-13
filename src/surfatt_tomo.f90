@@ -65,7 +65,7 @@ program surfatt_tomo
     call ag_gr%get_topo()
   endif
 
-  ! initial inverison
+  ! initial inversion
   call att%init(is_fwd=isfwd)
 
   if (isfwd) then
