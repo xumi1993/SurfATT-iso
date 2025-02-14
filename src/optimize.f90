@@ -17,6 +17,7 @@ module optimize
   use hdf5_interface
   use shared_par
   use para, ap => att_para_global
+  use model, am => att_model_global
   use utils
 
   implicit none
@@ -98,7 +99,8 @@ contains
     character(len=MAX_NAME_LEN) :: key_name
 
     write(key_name, '("/vs_",I3.3)') iter
-    call h5read(model_fname, key_name, tmp_model)
+    ! call h5read(model_fname, key_name, tmp_model)
+    call am%modfp%get(key_name, tmp_model)
     tmp_model = transpose_3(tmp_model)
     model = zeros( nker,size(tmp_model, 1), size(tmp_model, 2), size(tmp_model, 3))
     model(1,:,:,:) = tmp_model
@@ -106,13 +108,15 @@ contains
       ! read vp model
       deallocate(tmp_model)
       write(key_name, '("/vp_",I3.3)') iter
-      call h5read(model_fname, key_name, tmp_model)
+      ! call h5read(model_fname, key_name, tmp_model)
+      call am%modfp%get(key_name, tmp_model)
       model(2,:,:,:) = tmp_model
 
       ! read rho model
       deallocate(tmp_model)
       write(key_name, '("/rho_",I3.3)') iter
-      call h5read(model_fname, key_name, tmp_model)
+      ! call h5read(model_fname, key_name, tmp_model)
+      call am%modfp%get(key_name, tmp_model)
       model(3,:,:,:) = tmp_model
     endif
 
@@ -124,7 +128,8 @@ contains
     character(len=MAX_NAME_LEN) :: key_name
 
     write(key_name, '("/gradient_",I3.3)') iter
-    call h5read(model_fname, key_name, gradient)
+    ! call h5read(model_fname, key_name, gradient)
+    call am%modfp%get(key_name, gradient)
     gradient = transpose_4(gradient)
 
   end subroutine get_gradient
@@ -135,7 +140,8 @@ contains
     character(len=MAX_NAME_LEN) :: key_name
 
     write(key_name, '("/direction_",I3.3)') iter
-    call h5read(model_fname, key_name, direction)
+    ! call h5read(model_fname, key_name, direction)
+    call am%modfp%get(key_name, direction)
     direction = transpose_4(direction)
 
   end subroutine
