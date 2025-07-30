@@ -212,7 +212,7 @@ contains
             this%ker(1,:,:,i) = this%ker(1,:,:,i) - this%adj_s(ip,:,:) * this%sen_vsRc(ip,:,:,i)
             this%ker_density(1,:,:,i) = this%ker_density(1,:,:,i) - this%adj_density(ip,:,:) * this%sen_vsRc(ip,:,:,i)
             this%ker(2,:,:,i) = this%ker(2,:,:,i) - this%adj_s(ip,:,:) * this%sen_vpRc(ip,:,:,i)
-            this%ker_density(2,:,:,i) = this%ker_density(1,:,:,i) - this%adj_density(ip,:,:) * this%sen_vpRc(ip,:,:,i)
+            this%ker_density(2,:,:,i) = this%ker_density(2,:,:,i) - this%adj_density(ip,:,:) * this%sen_vpRc(ip,:,:,i)
             if (.not. ap%inversion%rho_scaling) then
               this%ker(3,:,:,i) = this%ker(3,:,:,i) - this%adj_s(ip,:,:) * this%sen_rhoRc(ip,:,:,i)
               this%ker_density(3,:,:,i) = this%ker_density(3,:,:,i) - this%adj_density(ip,:,:) * this%sen_rhoRc(ip,:,:,i)
