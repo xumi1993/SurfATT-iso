@@ -18,8 +18,23 @@ jobs:
     - name: make
       run: |
         mkdir build && cd build
-        cmake .. && make -j 4
+        cmake.. && make -j 4
 
+    - name: Diagnose HDF5
+      if: always()  # 即使前面失败也执行
+      run: |
+        echo ">>>>> CMake HDF5 info"
+        grep -i hdf5 build/CMakeCache.txt || true
+    
+        echo ">>>>> Linked HDF5 libs"
+        ldd build/SurfATT | grep hdf5 || true
+    
+        echo ">>>>> System HDF5"
+        h5dump --version || true
+    
+        echo ">>>>> Env vars"
+        env | grep -i hdf5 || true
+    
     - name: test
       run: |
         cd $GITHUB_WORKSPACE/examples/00_checkerboard_iso
