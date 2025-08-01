@@ -128,7 +128,13 @@ c           print *,d(i), b(i)
 c ---- constant value
        sone0 = 1.500
 c ---- phase velocity increment for searching root      
-       ddc0 = 0.005
+       if (minval(vsm) < 1.0_cr) then
+        ddc0 = 0.001_cr
+       elseif (minval(vsm) < 2.0_cr) then
+        ddc0 = 0.002_cr
+        else
+        ddc0 = 0.005_cr
+       endif
 c ---- frequency increment (%) for calculating group vel. using g = dw/dk = dw/d(w/c)       
        h0 = 0.005
 c ---- period range is:ie for calculation of dispersion     
@@ -347,6 +353,7 @@ c-----
         write(LOT,'(4f15.5)')(d(i),a(i),b(i),rho(i),i=1,mmax)
         write(LOT,*)' c(i),i=1,k (NOTE may be part)'
         write(LOT,*)(c(i),i=1,k)
+        stop 'Dispersion calculation failed'
         endif
 c     if(k.gt.0)goto 1750
 c       go to 2000
