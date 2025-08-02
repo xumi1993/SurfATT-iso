@@ -37,6 +37,7 @@ module model
     real(kind=dp), dimension(:,:,:), pointer               :: vs3d_opt, vp3d_opt, rho3d_opt
     integer, dimension(:,:), allocatable                   :: igrid
     character(MAX_NAME_LEN), private                       :: module='MODEL'
+    type(hdf5_file)                                        :: modfp
     ! integer                                                :: grid_istart, grid_iend
     ! integer, dimension(:), allocatable, public             :: grid_local_index
     contains
@@ -187,7 +188,7 @@ module model
     misfits = zeros(max_iter_1d)
     step_length = ap%inversion%step_length
     sigma = 0.68*this%zgrids(this%n_xyz(3))/ap%inversion%n_inv_grid(3)
-    call write_log('Do 1D inverison using averaged surface wave data',1,this%module)
+    call write_log('Do 1D inversion using averaged surface wave data',1,this%module)
     do iter = 1, max_iter_1d
       update_total = 0.
       do itype = 1, 2
@@ -236,14 +237,16 @@ module model
     niter = iter
   end subroutine inv1d
 
-  subroutine add_pert(this,nx,ny,nz,pert_vel,hmarg,anom_size)
+  subroutine add_pert(this,nx,ny,nz,pert_vel,hmarg,anom_size,only_vs)
     class(att_model), intent(inout) :: this
     integer,  intent(in) :: nx, ny, nz
     real(kind=dp), intent(in), optional :: pert_vel,hmarg,anom_size
+    logical, intent(in), optional :: only_vs
     real(kind=dp) :: ashmarg,aspert_vel,amp, asanom_size
     real(kind=dp), dimension(:), allocatable :: x_pert, y_pert, z_pert
     real(kind=dp), dimension(:,:,:), allocatable :: vs_pert
     real(kind=dp), dimension(3) :: para
+    logical :: asonly_vs
     integer :: ntaperx, ntapery, i, j, k
 
     if (present(pert_vel)) then 
@@ -262,6 +265,12 @@ module model
       asanom_size = anom_size
     else
       asanom_size = 0.
+    endif
+
+    if (present(only_vs)) then
+      asonly_vs = only_vs
+    else
+      asonly_vs = .false.
     endif
 
     if (myrank == 0) then
@@ -289,8 +298,10 @@ module model
         enddo
       enddo
       this%vs3d = this%vs3d*(1+vs_pert)
-      this%vp3d = empirical_vp(this%vs3d)
-      this%rho3d = empirical_rho(this%vp3d)
+      if (.not. asonly_vs) then
+        this%vp3d = empirical_vp(this%vs3d)
+        this%rho3d = empirical_rho(this%vp3d)
+      endif
     endif
     call synchronize_all()
     call sync_from_main_rank(this%vs3d, this%n_xyz(1), this%n_xyz(2), this%n_xyz(3))
@@ -314,6 +325,10 @@ module model
       call h%add('/lat',this%ygrids)
       call h%add('/dep',this%zgrids)
       call h%add('/vs',transpose_3(this%vs3d))
+      if (ap%inversion%use_alpha_beta_rho) then
+        call h%add('/vp',transpose_3(this%vp3d))
+        call h%add('/rho',transpose_3(this%rho3d))
+      endif
       call h%close()
     endif
     call synchronize_all()    

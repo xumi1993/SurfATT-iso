@@ -13,6 +13,7 @@ module constants
   real(kind=dp), parameter :: deg2rad = pi/180.0d0
   real(kind=dp), parameter :: rad2deg = 180.0d0/pi
   real(kind=dp), parameter :: km2deg = 1/(6371.0d0*pi/180.0d0)
+  real(kind=dp), parameter :: rho_scaling = 0.33
 
   character(len=MAX_STRING_LEN),parameter :: srfile = 'src_rec_iter.h5'
   character(len=MAX_STRING_LEN),parameter :: modfile = 'model_iter.h5'
@@ -20,7 +21,6 @@ module constants
 
 
   real(kind=dp), parameter :: precond_thres = 1.0d-4
-  integer, parameter :: m_store = 5
   integer, parameter :: iter_start = 0
 
 end module constants
@@ -34,9 +34,11 @@ module shared_par
   integer, dimension(:,:), allocatable :: rank_map
   integer :: LID
   integer :: loglevel
-  real(kind=dp), dimension(:,:,:), allocatable :: gradient_s, direction
+  real(kind=dp), dimension(:,:,:,:), allocatable :: gradient_s, direction
   character(len=MAX_STRING_LEN) :: log_fname, model_fname
   character(len=MAX_STRING_LEN) :: VERSION
+  integer :: m_store = 5
+  integer :: nker = 1
 
 contains
   subroutine get_version()

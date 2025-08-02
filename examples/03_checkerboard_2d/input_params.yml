@@ -18,7 +18,7 @@ output:
 
 domain:
   depth: [0, 10] # depth range in km
-  interval: [0.02, 0.024, 1] # x, y, z in km
+  interval: [0.02, 0.024, 1] # interval of lon(degree), lat(degree), z(km)
   num_grid_margin: 5 # number of grid margin
 
 topo:

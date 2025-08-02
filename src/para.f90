@@ -55,6 +55,7 @@ module para
     character(len=MAX_NAME_LEN), dimension(2)              :: optim_name = ['CG   ', 'LBFGS']
     real(kind=dp)                                          :: vel_range(2), step_length, min_derr=0.001,&
                                                               kdensity_coe=0.5, maxshrink=0.8, sigma_2d=0.
+    logical                                                :: use_alpha_beta_rho, rho_scaling
   end type para_inversion
 
   type, public :: att_para
@@ -191,7 +192,14 @@ module para
         this%inversion%max_sub_niter = inversion%get_integer('max_sub_niter',default=10,error=io_err)
         this%inversion%kdensity_coe = inversion%get_real('kdensity_coe',default=0.0,error=io_err)
         this%inversion%sigma_2d = inversion%get_real('sigma_2d',default=0.0,error=io_err)
-
+        m_store = inversion%get_integer('lbfgs_model_store',default=5,error=io_err)
+        this%inversion%use_alpha_beta_rho = inversion%get_logical( &
+          'use_alpha_beta_rho', default=.false., error=io_err &
+        )
+        if (this%inversion%use_alpha_beta_rho) nker = 3
+        this%inversion%rho_scaling = inversion%get_logical( &
+          'rho_scaling', default=.true., error=io_err &
+        )
       end select
       call root%finalize()
       deallocate(root)
@@ -236,6 +244,10 @@ module para
     call bcast_all(this%inversion%max_sub_niter)
     call bcast_all(this%inversion%optim_method)
     call bcast_all(this%inversion%sigma_2d)
+    call bcast_all(m_store)
+    call bcast_all(this%inversion%use_alpha_beta_rho)
+    call bcast_all(this%inversion%rho_scaling)
+    call bcast_all(nker)
     
     call synchronize_all()
 

@@ -8,6 +8,7 @@
 !                           (c) October 2023
 !   
 !     Changing History: Oct 2023, Initialize Codes
+!                       Jan 2025, change dims for Alpha_beta_rho
 !
 !=====================================================================
 module tomo
@@ -24,7 +25,8 @@ module tomo
 
   integer, private :: iter, itype, OID
   real(kind=dp), private :: updatemax
-  type(hdf5_file) :: h
+  logical, private :: is_write_mod
+  ! type(hdf5_file) :: h
 
   type, public ::  att_tomo
     integer, dimension(:,:), allocatable                   :: isrcs
@@ -55,6 +57,9 @@ contains
     endif
 
     model_fname = trim(ap%output%output_path)//"/"//trim(modfile)
+    if (ap%output%verbose_level > 0 .or. ap%inversion%optim_method > 0) then
+      is_write_mod = .true.
+    endif
     do itype = 1, 2
       if(.not. ap%data%vel_type(itype)) cycle
       call select_type()
@@ -72,19 +77,23 @@ contains
     if (myrank == 0) then 
       open(OID, file=trim(ap%output%output_path)//'/objective_function.csv',&
           status='replace',action='write')
-      if (ap%output%verbose_level > 0) then
-        call h%open(model_fname, status='new', action='w')
+      if (is_write_mod) then
+        call am%modfp%open(model_fname, status='new', action='w')
         do itype = 1, 2
           if (.not. ap%data%vel_type(itype)) cycle
           call select_type()
-          call h%add('/stlo_'//trim(ap%data%gr_name(itype)), aq%sr%stations%stlo)
-          call h%add('/stla_'//trim(ap%data%gr_name(itype)), aq%sr%stations%stla)
+          call am%modfp%add('/stlo_'//trim(ap%data%gr_name(itype)), aq%sr%stations%stlo)
+          call am%modfp%add('/stla_'//trim(ap%data%gr_name(itype)), aq%sr%stations%stla)
         enddo
-        call h%add('/lon', am%xgrids)
-        call h%add('/lat', am%ygrids)
-        call h%add('/dep', am%zgrids)
-        call h%add('/vs_000', transpose_3(am%vs3d))
-        call h%close(finalize=.true.)
+        call am%modfp%add('/lon', am%xgrids)
+        call am%modfp%add('/lat', am%ygrids)
+        call am%modfp%add('/dep', am%zgrids)
+        call am%modfp%add('/vs_000', transpose_3(am%vs3d))
+        if (ap%inversion%use_alpha_beta_rho) then
+          call am%modfp%add('/vp_000', transpose_3(am%vp3d))
+          call am%modfp%add('/rho_000', transpose_3(am%rho3d))
+        endif
+        ! call h%close(finalize=.true.)
       endif
     endif
     call synchronize_all()
@@ -164,7 +173,7 @@ contains
     enddo
     ! write final model
     call am%write('final_model')
-    ! if (myrank == 0 .and. ap%output%verbose_level > 0) call h%close(finalize=.true.)
+    if (myrank == 0 .and. is_write_mod) call am%modfp%close(finalize=.true.)
     close(OID)
     call write_log('Inversion is done.',1,this%module)
   end subroutine do_inversion
@@ -220,9 +229,15 @@ contains
         call write_log(this%message, 1, this%module)
       endif
       gradient_s = -updatemax * gradient_s / max_gk
-      am%vs3d = am%vs3d * (1 + gradient_s)
-      am%vp3d = empirical_vp(am%vs3d)
-      am%rho3d = empirical_rho(am%vp3d)
+      if (ap%inversion%use_alpha_beta_rho) then
+        am%vs3d = am%vs3d * (1 + gradient_s(1,:,:,:))
+        am%vp3d = empirical_vp(am%vs3d)
+        am%rho3d = empirical_rho(am%vp3d)
+      else
+        am%vs3d = am%vs3d * (1 + gradient_s(1,:,:,:))
+        am%vp3d = am%vp3d * (1 + gradient_s(2,:,:,:))
+        am%rho3d = am%rho3d * (1 + gradient_s(3,:,:,:))
+      endif
       call write_tmp_model()
     endif
     call synchronize_all()
@@ -252,9 +267,10 @@ contains
       else
         direction = -1.0_dp * gradient_s
       endif
-      if (ap%output%verbose_level > 0) then
+      if (is_write_mod) then
         write(secname,'(a,i3.3)') '/direction_',iter-1
-        call h5write(model_fname, secname, transpose_3(direction))
+        ! call h5write(model_fname, secname, transpose_4(direction))
+        call am%modfp%add(secname, transpose_4(direction))
       endif
     endif
     call synchronize_all()
@@ -288,14 +304,20 @@ contains
   subroutine prepare_fwd_linesearch()
     ! class(att_tomo), intent(inout) :: this
     real(kind=dp) :: max_gk
-    real(kind=dp), dimension(:,:,:), allocatable :: gradient_ls
+    real(kind=dp), dimension(:,:,:,:), allocatable :: gradient_ls
 
     if (myrank == 0) then
       max_gk = maxval(abs(direction))
       gradient_ls = updatemax * direction / max_gk
-      am%vs3d_opt = am%vs3d * (1 + gradient_ls)
-      am%vp3d_opt = empirical_vp(am%vs3d_opt)
-      am%rho3d_opt = empirical_rho(am%vp3d_opt)    
+      if (ap%inversion%use_alpha_beta_rho) then
+        am%vs3d_opt = am%vs3d * (1 + gradient_ls(1,:,:,:))
+        am%vp3d_opt = am%vp3d * (1 + gradient_ls(2,:,:,:))
+        am%rho3d_opt = am%rho3d * (1 + gradient_ls(3,:,:,:))
+      else
+        am%vs3d_opt = am%vs3d * (1 + gradient_ls(1,:,:,:))
+        am%vp3d_opt = empirical_vp(am%vs3d_opt)
+        am%rho3d_opt = empirical_rho(am%vp3d_opt)
+      endif
     endif
     call synchronize_all()
     call sync_from_main_rank(am%vs3d_opt, am%n_xyz(1), am%n_xyz(2), am%n_xyz(3))
@@ -312,13 +334,13 @@ contains
     p0 = this%misfits(iter)
     if (pt > p0 ) then
       write(this%message, '(a,F0.4,a,F0.4)') 'Misfit ',pt, ' larger than ', p0
-      call write_log(this%message, 0, this%module)
-      call write_log('step length is too large', 0, this%module)
+      call write_log(this%message, 1, this%module)
+      call write_log('step length is too large', 1, this%module)
       updatemax = updatemax * ap%inversion%maxshrink
       is_break = .false.
     else
       write(this%message, '(a,F0.4,a,F0.4)') 'Misfit reduced from ',p0,' to ',pt
-      call write_log(this%message,0,this%module)
+      call write_log(this%message, 1, this%module)
       write(this%message, '(a,F0.4," is ok, break line search")') 'Step length of ',updatemax
       call write_log(this%message,1,this%module)
       is_break = .true.
@@ -328,9 +350,18 @@ contains
   subroutine write_tmp_model()
     character(len=MAX_STRING_LEN) :: secname
 
-    if (ap%output%verbose_level > 0) then
+    if (is_write_mod) then
       write(secname,'(a,i3.3)') '/vs_',iter
-      call h5write(model_fname, secname, transpose_3(am%vs3d))
+      ! call h5write(model_fname, secname, transpose_3(am%vs3d))
+      call am%modfp%add(secname, transpose_3(am%vs3d))
+      if (ap%inversion%use_alpha_beta_rho) then
+        write(secname,'(a,i3.3)') '/vp_',iter
+        ! call h5write(model_fname, secname, transpose_3(am%vp3d))
+        call am%modfp%add(secname, transpose_3(am%vp3d))
+        write(secname,'(a,i3.3)') '/rho_',iter
+        ! call h5write(model_fname, secname, transpose_3(am%rho3d))
+        call am%modfp%add(secname, transpose_3(am%rho3d))
+      endif
     endif
 
   end subroutine write_tmp_model
@@ -338,14 +369,16 @@ contains
   subroutine write_gradient()
     character(len=MAX_STRING_LEN) :: secname
 
-    if (ap%output%verbose_level > 0) then
+    if (is_write_mod) then
       write(secname,'(a,i3.3)') '/gradient_',iter-1  
-      call h5write(model_fname, secname, transpose_3(gradient_s))
+      ! call h5write(model_fname, secname, transpose_4(gradient_s))
+      call am%modfp%add(secname, transpose_4(gradient_s))
       do itype = 1, 2
         if (.not. ap%data%vel_type(itype)) cycle
         call select_type()
         write(secname,'(a,a,"_",i3.3)') '/kdensity_',trim(ap%data%gr_name(itype)),iter-1
-        call h5write(model_fname, secname, transpose_3(aq%ker_density))
+        ! call h5write(model_fname, secname, transpose_4(aq%ker_density))
+        call am%modfp%add(secname, transpose_4(aq%ker_density))
       enddo
     endif
 
@@ -385,7 +418,7 @@ contains
     class(att_tomo), intent(inout) :: this
   
     if (myrank == 0) then
-      if (.not. this%is_fwd) gradient_s = zeros(am%n_xyz(1),am%n_xyz(2),am%n_xyz(3))
+      if (.not. this%is_fwd) gradient_s = zeros(nker, am%n_xyz(1),am%n_xyz(2),am%n_xyz(3))
       am%vs3d_opt = am%vs3d
       am%vp3d_opt = am%vp3d
       am%rho3d_opt = am%rho3d
