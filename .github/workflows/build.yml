@@ -2,7 +2,7 @@ name: Build SurfATT
 
 on:
   push:
-    branches: [ "devel" ]
+    branches: [ "devel", "devsj"]
   pull_request:
     branches: [ "main" ]
 
@@ -11,19 +11,29 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-    - name: Install dependencies
-      run: |
-          sudo apt update
-          sudo apt install build-essential gfortran cmake libopenmpi-dev openmpi-bin libhdf5-dev
-    - name: make
-      run: |
-        mkdir build && cd build
-        cmake .. && make -j 4
+    # Setup Miniconda
+    - name: Setup Miniconda
+      uses: conda-incubator/setup-miniconda@v2
+      with:
+        auto-update-conda: true
+        python-version: "3.10"
+        use-mamba: true
 
-    - name: test
+    # Create and activate Conda environment with required dependencies
+    - name: Create conda environment and build
+      shell: bash -l {0}
       run: |
+        conda create -n surfatt -c conda-forge openmpi cxx-compiler fortran-compiler cmake hdf5 -y
+        conda activate surfatt
+        mkdir build && cd build
+        cmake .. && make -j4
+
+    # Run example test with MPI and HDF5
+    - name: Test
+      shell: bash -l {0}
+      run: |
+        conda activate surfatt
         cd $GITHUB_WORKSPACE/examples/00_checkerboard_iso
-        sed -i "/NPROC=/c\NPROC=1" run_this_example.sh
-        sed -i "/niter: /c\  niter: 2" input_params.yml
-        sh run_this_example.sh
-      
+        sed -i '/^NPROC=/c\NPROC=1' run_this_example.sh
+        sed -i '/^  niter:/c\  niter: 2' input_params.yml
+        bash run_this_example.sh

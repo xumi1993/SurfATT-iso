@@ -334,13 +334,13 @@ contains
     p0 = this%misfits(iter)
     if (pt > p0 ) then
       write(this%message, '(a,F0.4,a,F0.4)') 'Misfit ',pt, ' larger than ', p0
-      call write_log(this%message, 0, this%module)
-      call write_log('step length is too large', 0, this%module)
+      call write_log(this%message, 1, this%module)
+      call write_log('step length is too large', 1, this%module)
       updatemax = updatemax * ap%inversion%maxshrink
       is_break = .false.
     else
       write(this%message, '(a,F0.4,a,F0.4)') 'Misfit reduced from ',p0,' to ',pt
-      call write_log(this%message,0,this%module)
+      call write_log(this%message, 1, this%module)
       write(this%message, '(a,F0.4," is ok, break line search")') 'Step length of ',updatemax
       call write_log(this%message,1,this%module)
       is_break = .true.
