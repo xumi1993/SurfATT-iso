@@ -84,6 +84,7 @@ c     cg - output phase or group velocities (vector,cg(NP))
 c----- 
 c        real*4 thkm(NLAY),vpm(NLAY),vsm(NLAY),rhom(NLAY)
         integer, parameter :: cr = 4, dp=8 
+        real(kind=cr), parameter :: searching_increment(3) = (/0.001, 0.002, 0.005/)
         integer,INTENT(IN) :: nlayer,iflsph,iwave,mode,igr,kmax
         real(cr),INTENT(IN):: thkm(nlayer),vpm(nlayer),vsm(nlayer),rhom(nlayer)
         real(dp),INTENT(IN) ::  t(kmax)
@@ -129,11 +130,11 @@ c ---- constant value
        sone0 = 1.500
 c ---- phase velocity increment for searching root      
        if (minval(vsm) < 1.0_cr) then
-        ddc0 = 0.001_cr
+        ddc0 = searching_increment(1)
        elseif (minval(vsm) < 2.0_cr) then
-        ddc0 = 0.002_cr
+        ddc0 = searching_increment(2)
         else
-        ddc0 = 0.005_cr
+        ddc0 = searching_increment(3)
        endif
 c ---- frequency increment (%) for calculating group vel. using g = dw/dk = dw/d(w/c)       
        h0 = 0.005
