@@ -119,6 +119,7 @@ contains
       call am%modfp%get(key_name, tmp_model)
       model(3,:,:,:) = tmp_model
     endif
+    model = log(model)
 
   end subroutine get_model
 
