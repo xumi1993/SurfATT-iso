@@ -110,14 +110,14 @@ contains
       write(key_name, '("/vp_",I3.3)') iter
       ! call h5read(model_fname, key_name, tmp_model)
       call am%modfp%get(key_name, tmp_model)
-      model(2,:,:,:) = tmp_model
+      model(2,:,:,:) = transpose_3(tmp_model)
 
       ! read rho model
       deallocate(tmp_model)
       write(key_name, '("/rho_",I3.3)') iter
       ! call h5read(model_fname, key_name, tmp_model)
       call am%modfp%get(key_name, tmp_model)
-      model(3,:,:,:) = tmp_model
+      model(3,:,:,:) = transpose_3(tmp_model)
     endif
     model = log(model)
 

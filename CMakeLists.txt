@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.10)
 
 # set the project name
 set(CMAKE_PROJECT_NAME "SurfATT")
-project(${CMAKE_PROJECT_NAME} VERSION 1.6.0 LANGUAGES Fortran CXX)
+project(${CMAKE_PROJECT_NAME} VERSION 1.6.1 LANGUAGES Fortran CXX)
 
 # set the version number and git commit hash
 execute_process(
