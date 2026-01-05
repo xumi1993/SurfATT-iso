@@ -231,12 +231,12 @@ contains
       gradient_s = -updatemax * gradient_s / max_gk
       if (ap%inversion%use_alpha_beta_rho) then
         am%vs3d = am%vs3d * (1 + gradient_s(1,:,:,:))
-        am%vp3d = empirical_vp(am%vs3d)
-        am%rho3d = empirical_rho(am%vp3d)
-      else
-        am%vs3d = am%vs3d * (1 + gradient_s(1,:,:,:))
         am%vp3d = am%vp3d * (1 + gradient_s(2,:,:,:))
         am%rho3d = am%rho3d * (1 + gradient_s(3,:,:,:))
+      else
+        am%vs3d = am%vs3d * (1 + gradient_s(1,:,:,:))
+        am%vp3d = empirical_vp(am%vs3d)
+        am%rho3d = empirical_rho(am%vp3d)
       endif
       call write_tmp_model()
     endif
