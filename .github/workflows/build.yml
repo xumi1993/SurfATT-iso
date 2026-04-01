@@ -23,7 +23,7 @@ jobs:
     - name: Create conda environment and build
       shell: bash -l {0}
       run: |
-        conda create -n surfatt -c conda-forge openmpi cxx-compiler fortran-compiler cmake hdf5 -y
+        conda create -n surfatt -c conda-forge openmpi cxx-compiler fortran-compiler zlib cmake hdf5 -y
         conda activate surfatt
         mkdir build && cd build
         cmake .. && make -j4
