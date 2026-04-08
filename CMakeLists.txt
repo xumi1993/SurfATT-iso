@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.10)
 
 # set the project name
 set(CMAKE_PROJECT_NAME "SurfATT")
-project(${CMAKE_PROJECT_NAME} VERSION 1.6.2 LANGUAGES Fortran CXX)
+project(${CMAKE_PROJECT_NAME} VERSION 1.6.3 LANGUAGES Fortran CXX)
 
 # set the version number and git commit hash
 execute_process(
@@ -44,14 +44,50 @@ message(STATUS "HDF5_VERSION: ${HDF5_VERSION}")
 # add sub modules
 find_package(yaml-cpp 0.8 QUIET)
 if (yaml-cpp_FOUND)
-  message(STATUS "yaml-cpp found")
-  message(STATUS "YAML_CPP_INCLUDE_DIR: ${YAML_CPP_INCLUDE_DIR}")
-  message(STATUS "YAML_CPP_LIBRARIES: ${YAML_CPP_LIBRARIES}")
+  message(STATUS "yaml-cpp found via find_package")
+  # Determine the correct target name (newer versions use yaml-cpp::yaml-cpp)
+  if (TARGET yaml-cpp::yaml-cpp)
+    set(YAML_CPP_TARGET yaml-cpp::yaml-cpp)
+    message(STATUS "Using target: yaml-cpp::yaml-cpp")
+  elseif (TARGET yaml-cpp)
+    set(YAML_CPP_TARGET yaml-cpp)
+    message(STATUS "Using target: yaml-cpp")
+  else()
+    message(FATAL_ERROR "yaml-cpp found but no target available")
+  endif()
 else()
-  message(STATUS "yaml-cpp not found. Using external_libs/yaml-cpp ...")
-  add_subdirectory("${PROJECT_SOURCE_DIR}/external_libs")
-  set(YAML_CPP_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/external_libs/yaml-cpp/include)
-  set(YAML_CPP_LIBRARIES yaml-cpp)
+  message(STATUS "yaml-cpp not found via find_package. Trying pkg-config...")
+  find_package(PkgConfig QUIET)
+  if (PkgConfig_FOUND)
+    pkg_check_modules(YAML_CPP yaml-cpp QUIET)
+    if (YAML_CPP_FOUND)
+      message(STATUS "yaml-cpp found via pkg-config")
+      message(STATUS "YAML_CPP_LIBRARIES: ${YAML_CPP_LIBRARIES}")
+      message(STATUS "YAML_CPP_LIBRARY_DIRS: ${YAML_CPP_LIBRARY_DIRS}")
+      # Find the actual library file
+      find_library(YAML_CPP_LIB NAMES yaml-cpp PATHS ${YAML_CPP_LIBRARY_DIRS})
+      if (YAML_CPP_LIB)
+        message(STATUS "Found yaml-cpp library: ${YAML_CPP_LIB}")
+        # Create an imported library target from pkg-config info
+        add_library(yaml-cpp-pc SHARED IMPORTED)
+        set_target_properties(yaml-cpp-pc PROPERTIES
+          IMPORTED_LOCATION "${YAML_CPP_LIB}"
+          INTERFACE_INCLUDE_DIRECTORIES "${YAML_CPP_INCLUDE_DIRS}"
+        )
+        set(YAML_CPP_TARGET yaml-cpp-pc)
+      else()
+        message(FATAL_ERROR "yaml-cpp pkg-config found but library not located")
+      endif()
+    else()
+      message(STATUS "yaml-cpp not found via pkg-config either. Using external_libs/yaml-cpp...")
+      add_subdirectory("${PROJECT_SOURCE_DIR}/external_libs")
+      set(YAML_CPP_TARGET yaml-cpp)
+    endif()
+  else()
+    message(STATUS "PkgConfig not available. Using external_libs/yaml-cpp...")
+    add_subdirectory("${PROJECT_SOURCE_DIR}/external_libs")
+    set(YAML_CPP_TARGET yaml-cpp)
+  endif()
 endif()
 
 # surfatt_modules
@@ -82,6 +118,9 @@ foreach(execsourcefile ${APP_SOURCES})
   
   # link yaml-app:
   target_link_libraries(${EXEC_NAME} PUBLIC fortran-yaml)
+  
+  # link yaml-cpp library explicitly (to resolve symbols from yaml.cpp.o)
+  target_link_libraries(${EXEC_NAME} PUBLIC ${YAML_CPP_TARGET})
 
   # link fortran-csv
   target_link_libraries(${EXEC_NAME} PUBLIC fortran-csv)
