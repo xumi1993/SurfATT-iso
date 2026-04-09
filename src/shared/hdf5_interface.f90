@@ -368,6 +368,9 @@ contains
 
     call self%add(dname)
 
+    ! Delete dataset if it already exists
+    if (self%exist(dname)) call self%delete(dname)
+
     call h5ltmake_dataset_f(self%lid, dname, &
       rank(value), int(shape(value),HSIZE_T), h5kind_to_type(kind(value),H5_REAL_KIND), value, ierr)
 
@@ -379,7 +382,10 @@ contains
     real(kind=dp), intent(in)      :: value(:,:)
 
     integer         :: ierr
+! Delete dataset if it already exists
+    if (self%exist(dname)) call self%delete(dname)
 
+    
     call self%add(dname)
 
     call h5ltmake_dataset_f(self%lid, dname, &
@@ -396,6 +402,9 @@ contains
 
     call self%add(dname)
 
+    ! Delete dataset if it already exists
+    if (self%exist(dname)) call self%delete(dname)
+
     call h5ltmake_dataset_f(self%lid, dname, &
       rank(value), int(shape(value),HSIZE_T), h5kind_to_type(kind(value),H5_REAL_KIND), value, ierr)
 
@@ -410,6 +419,9 @@ contains
     integer         :: ierr
 
     call self%add(dname)
+
+    ! Delete dataset if it already exists
+    if (self%exist(dname)) call self%delete(dname)
 
     call h5ltmake_dataset_f(self%lid, dname, &
       rank(value), int(shape(value),HSIZE_T), h5kind_to_type(kind(value),H5_REAL_KIND), value, ierr)
