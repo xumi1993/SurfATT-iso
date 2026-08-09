@@ -1,3 +1,5 @@
+# This is an outdated repository. Now SurfATT and related libraries are developed [here](https://github.com/TomoATT/SurfATT).
+
 # SurfATT
 
 [![Language](https://img.shields.io/badge/-Fortran-734f96?logo=fortran&logoColor=white)](https://github.com/topics/fortran)
